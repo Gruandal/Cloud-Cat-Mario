@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Final Seamless Polish</title>
+    <title>Cat Mario | Easy Boss Update</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 (維持不變) --- */
@@ -148,7 +148,7 @@
             ctx.beginPath(); ctx.ellipse(-8, -radius+7, 3, 6, -0.3, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(8, -radius+7, 3, 6, 0.3, 0, Math.PI*2); ctx.fill();
 
-            // 耳朵 (內縮版)
+            // 耳朵
             ctx.fillStyle = '#FFA500';
             ctx.beginPath(); 
             ctx.moveTo(-16, -radius + 8); ctx.lineTo(-12, -radius - 4); ctx.lineTo(-6, -radius + 5);
@@ -233,19 +233,16 @@
             const levelEnd = (lvl === 6) ? 1000 : 2800; 
             let lastGroundPlatform = null;
 
-            // 【重點修正】第一段路改成單一巨大的區塊，消除接縫
-            // 直接從 -200 延伸到 800 (足夠覆蓋第一畫面且留有餘地)
+            // 起始超大無縫地面
             let initialSafeWidth = 1000;
             lastGroundPlatform = {x: currentGroundX, y: GROUND_Y, w: initialSafeWidth, h: 50, type: 'ground', visible: true};
             platforms.push(lastGroundPlatform);
             
-            // 下一段地面從 gap 之後開始
             currentGroundX += initialSafeWidth + (60 + Math.random() * 80);
 
             while(currentGroundX < levelEnd) {
                 let blockWidth = 200 + Math.random() * 300;
-                // 確保終點附近有足夠腹地
-                if (currentGroundX + blockWidth > levelEnd - 150) blockWidth = Math.max(blockWidth, 200);
+                if (currentGroundX < 50 && currentGroundX + blockWidth > 50) blockWidth = Math.max(blockWidth, 300);
 
                 lastGroundPlatform = {x: currentGroundX, y: GROUND_Y, w: blockWidth, h: 50, type: 'ground', visible: true};
                 platforms.push(lastGroundPlatform);
@@ -434,8 +431,10 @@
                 let dx = (player.x + player.radius) - (boss.x + boss.r); 
                 let dy = (player.y + player.radius) - (boss.y + boss.r); 
                 let dist = Math.sqrt(dx*dx + dy*dy);
+                // 【修正】判定範圍大幅放寬
                 if (dist < player.radius + boss.r) {
-                    if (player.vy > 0 && player.y + player.radius < boss.y + 15) {
+                    // 只要玩家是往下掉的，並且接觸點在 BOSS 底部邊緣之上 (幾乎只要不是從正下方往上撞都算贏)
+                    if (player.vy > 0 && player.y + player.radius < boss.y + boss.r - 10) {
                         boss.hp--; player.vy = -10; 
                         if (boss.hp <= 0) { boss.active = false; score += 5000; gameState = 'WIN'; savedCheckpoint = 1; showMessage('YOU WIN!\nCat Hero!', 'Press Space to Restart', 0); }
                     } else { playerDie(); }
@@ -472,23 +471,17 @@
                 ctx.fillRect(p.x, p.y, p.w, 2); ctx.fillRect(p.x, p.y + p.h - 2, p.w, 2);
                 ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
                 
-                // 【修正】地板點綴 (使用 Math.abs 確保負座標不會出錯)
+                // 地板點綴 (修正範圍)
                 if (p.type === 'ground') {
                     ctx.fillStyle = '#5d3a1a'; 
-                    // seed 使用絕對值，避免負數計算錯誤
                     let seed = Math.abs(p.x) + 1; 
-                    // X範圍：左右各內縮 20px
                     for(let i = p.x + 20; i < p.x + p.w - 25; i += 30) {
                         seed = (seed * 9301 + 49297) % 233280; 
                         let randX = (seed % 10);
-                        
-                        // Y範圍：嚴格限制
                         let soilTop = p.y + 6; 
                         let soilBottom = p.y + p.h - 8; 
                         let availableH = soilBottom - soilTop;
-                        // 確保百分比計算不會出錯
                         let randY = ((Math.abs(seed) % 100) / 100) * availableH + soilTop;
-
                         ctx.fillRect(i + randX, randY, 6, 6);
                     }
                 }
@@ -512,7 +505,7 @@
 
             if (boss && boss.active) {
                 drawEnemyBall(ctx, boss.x, boss.y, boss.r, boss.vx > 0 ? 1 : -1, boss.rotation);
-                // 【修正】血條緊貼頭頂 (距離25px，非常近)
+                // 【修正】血條更靠近BOSS，緊貼頭頂
                 let barWidth = 104;
                 let barX = boss.x + boss.r - barWidth / 2; 
                 let barY = boss.y - 25; 
