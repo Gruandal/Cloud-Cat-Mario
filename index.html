@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Better Ground & Easier Boss</title>
+    <title>Cat Mario | Final Fixes</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
-        /* --- CSS 樣式區 --- */
+        /* --- CSS 樣式區 (維持不變) --- */
         body {
             margin: 0;
             background: #222; 
@@ -229,12 +229,16 @@
         function generateLevel(lvl) {
             platforms = []; enemies = []; boss = null; goal = null; coins = [];
 
-            let currentGroundX = -200;
+            // 【修正】確保出生點是安全且足夠長的地面
+            platforms.push({x: -200, y: GROUND_Y, w: 600, h: 50, type: 'ground', visible: true});
+            let currentGroundX = 400; // 從出生點後開始生成
+
             const levelEnd = (lvl === 6) ? 1000 : 2800; 
             
             while(currentGroundX < levelEnd) {
                 let blockWidth = 200 + Math.random() * 300;
-                if (currentGroundX < 50 && currentGroundX + blockWidth > 50) blockWidth = Math.max(blockWidth, 300);
+                // 【修正】終點門附近的地面也要是實心的
+                if (currentGroundX + blockWidth > levelEnd - 100) blockWidth = Math.max(blockWidth, 300);
 
                 platforms.push({x: currentGroundX, y: GROUND_Y, w: blockWidth, h: 50, type: 'ground', visible: true});
 
@@ -267,7 +271,8 @@
 
                     currentX += width + gap;
                 }
-                goal = {x: currentX, y: 300, w: 40, h: 50};
+                // 【修正】確保終點座標在實心平台上
+                goal = {x: currentGroundX - 100, y: 300, w: 40, h: 50};
             }
 
             if (lvl === 6) {
@@ -418,10 +423,7 @@
                 let dx = (player.x + player.radius) - (boss.x + boss.r); 
                 let dy = (player.y + player.radius) - (boss.y + boss.r); 
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                // 【修正】攻擊判定變得寬鬆
                 if (dist < player.radius + boss.r) {
-                    // 原本是 player.y + player.radius < boss.y
-                    // 現在改為 < boss.y + 15，即使稍微碰到BOSS中心線上方也算攻擊成功
                     if (player.vy > 0 && player.y + player.radius < boss.y + 15) {
                         boss.hp--; player.vy = -10; 
                         if (boss.hp <= 0) { boss.active = false; score += 5000; gameState = 'WIN'; savedCheckpoint = 1; showMessage('YOU WIN!\nCat Hero!', 'Press Space to Restart', 0); }
@@ -458,16 +460,18 @@
                 ctx.fillStyle = '#000';
                 ctx.fillRect(p.x, p.y, p.w, 2); ctx.fillRect(p.x, p.y + p.h - 2, p.w, 2);
                 ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
-                // 【修正】地板點綴
+                // 【修正】地板點綴 (限制範圍)
                 if (p.type === 'ground') {
-                    ctx.fillStyle = '#5d3a1a'; // 深咖啡色
-                    // 讓點點看起來隨機但位置固定
+                    ctx.fillStyle = '#5d3a1a'; 
                     let seed = p.x; 
-                    for(let i = p.x; i < p.x + p.w; i += 20) {
-                        seed = (seed * 9301 + 49297) % 233280; // 簡單的隨機數生成
+                    for(let i = p.x + 5; i < p.x + p.w - 5; i += 20) {
+                        seed = (seed * 9301 + 49297) % 233280; 
                         let randY = (seed / 233280) * (p.h - 20) + 15;
                         let randX = (seed % 15);
-                        ctx.fillRect(i + randX, p.y + randY, 6, 6); // 大一點的點點
+                        // 確保不超出土壤範圍
+                        if(p.y + randY < p.y + p.h - 6) {
+                             ctx.fillRect(i + randX, p.y + randY, 6, 6);
+                        }
                     }
                 }
             });
@@ -490,9 +494,12 @@
 
             if (boss && boss.active) {
                 drawEnemyBall(ctx, boss.x, boss.y, boss.r, boss.vx > 0 ? 1 : -1, boss.rotation);
-                ctx.fillStyle = '#000'; ctx.fillRect(boss.x - 50, boss.y - boss.r - 20, 104, 14);
-                ctx.fillStyle = 'red'; ctx.fillRect(boss.x - 48, boss.y - boss.r - 18, 100, 10);
-                ctx.fillStyle = '#228B22'; ctx.fillRect(boss.x - 48, boss.y - boss.r - 18, 100 * (boss.hp / 10), 10);
+                // 【修正】血條置中
+                let barWidth = 104;
+                let barX = boss.x + boss.r - barWidth / 2; 
+                ctx.fillStyle = '#000'; ctx.fillRect(barX, boss.y - boss.r - 20, barWidth, 14);
+                ctx.fillStyle = 'red'; ctx.fillRect(barX + 2, boss.y - boss.r - 18, 100, 10);
+                ctx.fillStyle = '#228B22'; ctx.fillRect(barX + 2, boss.y - boss.r - 18, 100 * (boss.hp / 10), 10);
             }
 
             if (gameState === 'PLAYING' || gameState === 'START') {
