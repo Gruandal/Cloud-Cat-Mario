@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Pixel Background + Bouncing Ball</title>
+    <title>Cat Mario | Pixel BG + Rolling Cat Ball</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
-        /* --- CSS 樣式區 (恢復原本的像素風格設定) --- */
+        /* --- CSS 樣式區 (維持原本的像素風格設定) --- */
         body {
             margin: 0;
             background: #222; 
@@ -15,7 +15,7 @@
             align-items: center;
             height: 100vh;
             color: #fff;
-            font-family: 'Press Start 2P', cursive; /* 像素字體 */
+            font-family: 'Press Start 2P', cursive;
             overflow: hidden;
             user-select: none;
         }
@@ -25,7 +25,7 @@
             border: 4px solid #000;
             width: 800px;
             height: 400px;
-            background: #5C94FC; /* 預設天空藍 */
+            background: #5C94FC;
         }
         canvas {
             display: block;
@@ -108,73 +108,87 @@
         let highScore = localStorage.getItem('catMarioHighScore') || 0;
         document.getElementById('highScoreDisplay').innerText = highScore;
 
-        // 物理設定 (使用 Q 彈球的物理參數)
+        // 物理設定
         const GRAVITY = 0.6;
         const JUMP_FORCE = -12;
+        const DOUBLE_JUMP_FORCE = -10; // 二段跳稍微小一點
         const SPEED = 5;
 
-        // 玩家設定 (使用圓球設定)
+        // 玩家設定 (新增二段跳和旋轉相關屬性)
         const player = {
             x: 50, y: 300, 
-            radius: 20, // 半徑
+            radius: 20,
             vx: 0, vy: 0,
             grounded: false, 
-            facing: 1, // 1:右, -1:左
-            squash: 1, // 擠壓係數 (Y軸)
-            stretch: 1 // 拉伸係數 (X軸)
+            facing: 1, 
+            squash: 1, stretch: 1,
+            // 新增屬性
+            canDoubleJump: true, // 是否可以二段跳
+            rotation: 0,         // 目前旋轉角度
+            isRolling: false     // 是否正在翻滾
         };
 
         let platforms = []; let enemies = [];
         let goal = null; let boss = null;
 
         // ==========================================
-        // --- 繪圖函數區 (保留 Q 彈貓咪球的繪製) ---
+        // --- 繪圖函數區 ---
         // ==========================================
 
-        // 繪製橘貓球 (幾何繪圖)
-        function drawCatBall(ctx, x, y, radius, facing, sx, sy) {
+        // 【更新】繪製橘貓球 (支援旋轉)
+        function drawCatBall(ctx, x, y, radius, facing, sx, sy, rotation) {
             ctx.save();
-            ctx.translate(x, y + radius); // 設底點為基準
-            ctx.scale(sx, sy); // 彈性變形
-            ctx.translate(0, -radius); // 回到中心
+            // 1. 移動到球體中心
+            ctx.translate(x, y + radius); 
+            // 2. 旋轉 (在中心點旋轉)
+            ctx.rotate(rotation);
+            // 3. 彈性變形 (在中心點縮放)
+            ctx.scale(sx, sy); 
+            
+            // --- 以下繪圖座標皆相對於中心點 (0,0) ---
 
             // 身體
             ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2);
             ctx.fillStyle = '#FFA500'; ctx.fill();
             ctx.lineWidth = 3; ctx.strokeStyle = '#8B4500'; ctx.stroke();
 
-            // 虎斑紋
+            // 虎斑紋 (頭頂)
             ctx.fillStyle = '#8B4500';
             ctx.beginPath(); ctx.ellipse(0, -radius+5, 4, 8, 0, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.ellipse(-8, -radius+8, 3, 6, -0.2, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.ellipse(8, -radius+8, 3, 6, 0.2, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(-8, -radius+7, 3, 6, -0.3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.ellipse(8, -radius+7, 3, 6, 0.3, 0, Math.PI*2); ctx.fill();
 
-            // 耳朵
+            // 耳朵 (因為會旋轉，耳朵要固定在頭頂位置)
             ctx.fillStyle = '#FFA500';
-            ctx.beginPath(); ctx.moveTo(-radius + 2, -radius + 10); ctx.lineTo(-radius - 5, -radius - 5); ctx.lineTo(-radius + 12, -radius + 2);
-            ctx.moveTo(radius - 2, -radius + 10); ctx.lineTo(radius + 5, -radius - 5); ctx.lineTo(radius - 12, -radius + 2);
+            ctx.beginPath(); 
+            // 左耳
+            ctx.moveTo(-8, -radius+2); ctx.lineTo(-15, -radius-6); ctx.lineTo(-2, -radius-2);
+            // 右耳
+            ctx.moveTo(8, -radius+2); ctx.lineTo(15, -radius-6); ctx.lineTo(2, -radius-2);
             ctx.fill(); ctx.stroke();
+            // 耳內
             ctx.fillStyle = '#FFC0CB';
-            ctx.beginPath(); ctx.moveTo(-radius+2, -radius+8); ctx.lineTo(-radius-2, -radius-2); ctx.lineTo(-radius+10, -radius+4); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(radius-2, -radius+8); ctx.lineTo(radius+2, -radius-2); ctx.lineTo(radius-10, -radius+4); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-8, -radius+2); ctx.lineTo(-13, -radius-4); ctx.lineTo(-4, -radius-1); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(8, -radius+2); ctx.lineTo(13, -radius-4); ctx.lineTo(4, -radius-1); ctx.fill();
 
-            // 臉部
-            let faceX = facing * 6;
+            // 臉部 (眼睛和嘴巴要根據 facing 稍微偏移，但也要跟著旋轉)
+            let faceX = facing * 4;
             ctx.fillStyle = '#000';
-            ctx.beginPath(); ctx.arc(-6 + faceX, -2, 3, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(6 + faceX, -2, 3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-6 + faceX, 0, 3, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(6 + faceX, 0, 3, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = '#FFF';
-            ctx.beginPath(); ctx.arc(-5 + faceX, -3, 1, 0, Math.PI*2); ctx.fill();
-            ctx.beginPath(); ctx.arc(7 + faceX, -3, 1, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(-5 + faceX, -1, 1, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(7 + faceX, -1, 1, 0, Math.PI*2); ctx.fill();
             ctx.fillStyle = '#FF69B4';
-            ctx.beginPath(); ctx.arc(0 + faceX, 3, 2.5, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); ctx.arc(0 + faceX, 4, 2.5, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.strokeStyle = '#000'; ctx.lineWidth = 1.5;
-            ctx.arc(-2 + faceX, 6, 2, 0, Math.PI); ctx.stroke();
-            ctx.beginPath(); ctx.arc(2 + faceX, 6, 2, 0, Math.PI); ctx.stroke();
+            ctx.arc(-2 + faceX, 7, 2, 0, Math.PI); ctx.stroke();
+            ctx.beginPath(); ctx.arc(2 + faceX, 7, 2, 0, Math.PI); ctx.stroke();
+            
             ctx.restore();
         }
 
-        // 繪製敵人球 (灰貓)
+        // 繪製敵人球 (保持不變)
         function drawEnemyBall(ctx, x, y, radius, facing) {
             ctx.save(); ctx.translate(x, y);
             ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2);
@@ -189,28 +203,22 @@
             ctx.restore();
         }
 
-        // --- 繪製背景函數 (恢復原本的像素風格) ---
+        // 繪製背景函數 (保持不變，像素風格)
         function drawBackground() {
             ctx.save(); ctx.resetTransform(); 
-            // 1. 天空 (漸層)
             let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             skyGradient.addColorStop(0, "#5C94FC"); skyGradient.addColorStop(1, "#87CEEB"); 
             ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. 地板裝飾 (像素風格)
             const groundY = 350;
             ctx.fillStyle = '#8B4513'; ctx.fillRect(0, groundY + 5, canvas.width, 50);
-            ctx.fillStyle = '#6d340c'; // 像素點綴
+            ctx.fillStyle = '#6d340c'; 
             for(let i=0; i<canvas.width; i+=20) {
                  if(i%3 === 0) ctx.fillRect(i, groundY + 15, 5, 5);
                  if(i%4 === 0) ctx.fillRect(i+10, groundY + 30, 5, 5);
             }
             ctx.fillStyle = '#228B22'; ctx.fillRect(0, groundY, canvas.width, 5);
-            // 邊緣線
             ctx.fillStyle = '#000';
             ctx.fillRect(0, groundY, canvas.width, 2); ctx.fillRect(0, canvas.height - 2, canvas.width, 2); 
-
-            // 3. 雲朵 (像素塊狀)
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.fillRect(100, 80, 80, 25); ctx.fillRect(120, 60, 40, 20);
             ctx.fillRect(550, 120, 90, 25); ctx.fillRect(580, 100, 50, 20);
@@ -219,12 +227,10 @@
         }
         // ==========================================
 
-        // --- 關卡生成 (混合版) ---
+        // --- 關卡生成 (保持不變) ---
         function generateLevel(lvl) {
             platforms = []; enemies = []; boss = null; goal = null;
-            // 物理地板
             platforms.push({x: -200, y: 350, w: 3000, h: 50, type: 'ground', visible: false});
-
             if (lvl < 6) {
                 let currentX = 200;
                 for(let i=0; i<5 + lvl; i++) {
@@ -233,9 +239,8 @@
                     let width = 100 + Math.random() * 100;
                     platforms.push({x: currentX, y: height, w: width, h: 20, type: 'plat', visible: true});
                     if (lvl > 1 && Math.random() > 0.3) {
-                        // 敵人現在是球體
                         enemies.push({
-                            x: currentX + 20, y: height - 20, r: 15, // 使用半徑
+                            x: currentX + 20, y: height - 20, r: 15, 
                             vx: 2 + (lvl * 0.2), minX: currentX, maxX: currentX + width
                         });
                     }
@@ -243,39 +248,51 @@
                 }
                 goal = {x: currentX, y: 300, w: 40, h: 50};
             }
-
             if (lvl === 6) {
                 platforms.push({x: -200, y: 350, w: 1200, h: 50, type: 'ground', visible: false});
                 platforms.push({x: 50, y: 250, w: 100, h: 20, type: 'plat', visible: true});
                 platforms.push({x: 650, y: 250, w: 100, h: 20, type: 'plat', visible: true});
                 platforms.push({x: 350, y: 150, w: 100, h: 20, type: 'plat', visible: true});
                 boss = {
-                    x: 400, y: 250, r: 50, // BOSS 是大球
-                    vx: 3, vy: 0, hp: 10, active: true, minX: 0, maxX: 700
+                    x: 400, y: 250, r: 50, vx: 3, vy: 0, hp: 10, active: true, minX: 0, maxX: 700
                 };
             }
         }
 
-        // --- 輸入控制 ---
+        // --- 輸入控制 (新增二段跳邏輯) ---
         const keys = {};
         window.addEventListener('keydown', e => {
             keys[e.code] = true; if(e.code === 'Space') e.preventDefault(); 
             if (e.code === 'Space' || e.code === 'KeyW') {
                 if (gameState === 'START' || gameState === 'GAME_OVER' || gameState === 'WIN') { resetGame(); }
-                else if (gameState === 'PLAYING' && player.grounded) {
-                    player.vy = JUMP_FORCE;
-                    player.grounded = false;
-                    // 跳躍瞬間拉長動畫
-                    player.squash = 0.7; player.stretch = 1.3;
+                else if (gameState === 'PLAYING') {
+                    if (player.grounded) {
+                        // 第一段跳躍
+                        jump(JUMP_FORCE);
+                        player.canDoubleJump = true; // 允許二段跳
+                    } else if (player.canDoubleJump) {
+                        // 二段跳躍
+                        jump(DOUBLE_JUMP_FORCE);
+                        player.canDoubleJump = false; // 用過了
+                        player.isRolling = true; // 開始翻滾
+                    }
                 }
             }
         });
+
+        // 輔助跳躍函數
+        function jump(force) {
+            player.vy = force;
+            player.grounded = false;
+            player.squash = 0.7; player.stretch = 1.3; // 拉伸動畫
+        }
+
         window.addEventListener('keyup', e => keys[e.code] = false);
         document.getElementById('playButton').addEventListener('click', () => { if (gameState !== 'PLAYING') resetGame(); });
 
         function resetGame() { level = savedCheckpoint; lives = 3; score = 0; updateUI(); startLevel(); }
         function startLevel() {
-            player.x = 50; player.y = 300; player.vx = 0; player.vy = 0;
+            player.x = 50; player.y = 300; player.vx = 0; player.vy = 0; player.rotation = 0; player.isRolling = false;
             generateLevel(level); gameState = 'PLAYING';
             let msg = `LEVEL ${level}`; let prompt = 'Press SPACE to Start';
             if (level === 3) { savedCheckpoint = Math.max(savedCheckpoint, 3); msg += (savedCheckpoint === 3 && level===3) ? '\n★ CHECKPOINT SAVED ★' : '\n(CHECKPOINT LOADED)'; }
@@ -297,7 +314,7 @@
             if (duration > 0) setTimeout(() => { if (gameState === 'PLAYING') msgDiv.style.display = 'none'; }, duration);
         }
 
-        // --- 物理更新 (使用 Q 彈球的邏輯) ---
+        // --- 物理更新 (包含翻滾邏輯) ---
         function update() {
             if (gameState !== 'PLAYING') return;
             // 左右移動
@@ -308,7 +325,7 @@
             // 跳躍與重力
             player.vy += GRAVITY; player.x += player.vx; player.y += player.vy;
 
-            // 彈性動畫邏輯 (Squash & Stretch)
+            // 彈性動畫邏輯
             let speed = Math.abs(player.vy);
             if (!player.grounded) {
                 player.stretch = 1 + speed * 0.02; player.squash = 1 - speed * 0.01;
@@ -316,18 +333,26 @@
                 player.squash += (1 - player.squash) * 0.2; player.stretch += (1 - player.stretch) * 0.2;
             }
 
-            // 碰撞檢測 (圓形 vs 矩形平台)
+            // 【新增】翻滾動畫邏輯
+            if (player.isRolling) {
+                // 根據移動方向旋轉，如果沒移動就預設順時針
+                let dir = player.vx > 0 ? 1 : (player.vx < 0 ? -1 : 1);
+                player.rotation += 0.3 * dir; // 調整 0.3 可以改變翻滾速度
+            }
+
+            // 碰撞檢測
             player.grounded = false;
             platforms.forEach(p => {
-                // 簡化的 AABB 碰撞，用於圓形主角與矩形平台
                 if (player.x > p.x && player.x < p.x + p.w &&
                     player.y + player.radius > p.y && player.y - player.radius < p.y + p.h) {
-                    // 從上方落下碰到平台
                     if (player.vy > 0 && player.y < p.y + 20) {
                         player.y = p.y - player.radius;
                         player.vy = 0;
                         player.grounded = true;
-                        // 落地瞬間變扁動畫
+                        // 【新增】著地時重置狀態
+                        player.canDoubleJump = true; 
+                        player.isRolling = false;
+                        player.rotation = 0; // 著地後轉正
                         if(speed > 2) { player.squash = 1.3; player.stretch = 0.7; }
                     }
                 }
@@ -336,7 +361,6 @@
             if (player.y > canvas.height) playerDie();
             if (goal && player.x > goal.x && player.x < goal.x + goal.w && player.y > goal.y) levelComplete();
 
-            // 敵人更新 (球體碰撞)
             enemies.forEach(e => {
                 e.x += e.vx; if (e.x < e.minX || e.x > e.maxX) e.vx *= -1;
                 let dx = player.x - e.x; let dy = player.y - e.y; let dist = Math.sqrt(dx*dx + dy*dy);
@@ -346,7 +370,6 @@
                 }
             });
 
-            // BOSS 更新 (大球體碰撞)
             if (boss && boss.active) {
                 boss.x += boss.vx; if (boss.x < boss.minX || boss.x > boss.maxX) boss.vx *= -1;
                 let dx = player.x - boss.x; let dy = player.y - boss.y; let dist = Math.sqrt(dx*dx + dy*dy);
@@ -361,7 +384,7 @@
 
         function playerDie() {
             lives--; updateUI();
-            if (lives > 0) { player.x = 50; player.y = 200; player.vy = 0; }
+            if (lives > 0) { player.x = 50; player.y = 200; player.vy = 0; player.rotation = 0; player.isRolling = false; }
             else {
                 gameState = 'GAME_OVER';
                 let msg = 'GAME OVER\nScore: ' + score;
@@ -374,14 +397,11 @@
 
         // --- 主繪圖迴圈 ---
         function draw() {
-            // 1. 畫背景 (原本的像素風格)
             drawBackground();
-
             ctx.save();
             let camX = 0; if (level !== 6) camX = Math.max(0, player.x - 200);
             ctx.translate(-camX, 0);
 
-            // 2. 畫平台 (原本的像素風格)
             platforms.forEach(p => {
                 if (!p.visible) return;
                 ctx.fillStyle = '#8B4513'; ctx.fillRect(p.x, p.y + 5, p.w, p.h - 5);
@@ -391,7 +411,6 @@
                 ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
             });
 
-            // 3. 畫終點 (原本的像素風格門)
             if (goal) {
                 ctx.fillStyle = '#8B4513'; ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
                 ctx.fillStyle = '#5c3317'; ctx.fillRect(goal.x, goal.y, goal.w, 4); ctx.fillRect(goal.x, goal.y, 4, goal.h);
@@ -402,30 +421,26 @@
                 ctx.fillStyle = '#000'; ctx.font = '16px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.fillText('GOAL', goal.x + goal.w / 2, goal.y - 10); ctx.textAlign = 'start';
             }
 
-            // 4. 畫敵人 (改為球體)
             enemies.forEach(e => {
                 if(e.y < 500) drawEnemyBall(ctx, e.x, e.y, e.r, e.vx > 0 ? 1 : -1);
             });
 
-            // 5. 畫 BOSS (改為大球體)
             if (boss && boss.active) {
                 drawEnemyBall(ctx, boss.x, boss.y, boss.r, boss.vx > 0 ? 1 : -1);
-                // BOSS 血條 (保留原本風格)
                 ctx.fillStyle = '#000'; ctx.fillRect(boss.x - 50, boss.y - boss.r - 20, 104, 14);
                 ctx.fillStyle = 'red'; ctx.fillRect(boss.x - 48, boss.y - boss.r - 18, 100, 10);
                 ctx.fillStyle = '#228B22'; ctx.fillRect(boss.x - 48, boss.y - boss.r - 18, 100 * (boss.hp / 10), 10);
             }
 
-            // 6. 畫玩家 (Q 彈貓咪球)
+            // 【更新】傳入 rotation 參數
             if (gameState === 'PLAYING' || gameState === 'START') {
-                drawCatBall(ctx, player.x, player.y, player.radius, player.facing, player.squash, player.stretch);
+                drawCatBall(ctx, player.x, player.y, player.radius, player.facing, player.squash, player.stretch, player.rotation);
             }
 
             ctx.restore(); 
             requestAnimationFrame(draw);
         }
 
-        // 初始顯示
         showMessage('LEVEL 1', 'Press space to start!', 0);
         setInterval(update, 1000/60);
         draw();
