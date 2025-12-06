@@ -4,7 +4,6 @@
 遊戲特色是一隻可愛的橘色貓咪球，擁有 Q 彈的物理效果與流暢的動作動畫。玩家需要躲避敵人、收集金幣、跨越障礙，並在最後關卡挑戰大魔王。
 
 ![Game Screenshot](<img width="1612" height="805" alt="image" src="https://github.com/user-attachments/assets/8bcc48cf-5312-4752-b68c-b651d7870dcb" />)
-*(建議在此處放一張遊戲截圖)*
 
 ## ✨ 特色 (Features)
 
