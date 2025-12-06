@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Final UI Polish</title>
+    <title>Cat Mario | Final Polish V2</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 (維持不變) --- */
@@ -542,7 +542,8 @@
 
             // 【UI 更新】HOW_TO_PLAY 排版美化
             if (gameState === 'HOW_TO_PLAY') {
-                ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                // 【修改】背景變得更暗 (0.7 -> 0.85)
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.85)';
                 ctx.fillRect(camX, 0, canvas.width, canvas.height);
 
                 ctx.save();
@@ -556,16 +557,16 @@
 
                 // 內容區
                 ctx.textAlign = 'left';
-                ctx.font = '12px "Press Start 2P"'; // 字體縮小
+                ctx.font = '12px "Press Start 2P"';
                 
                 let startY = 110; 
-                let leftColX = 220; // 圖示位置
-                let rightColX = 260; // 文字起始位置
+                let leftColX = 220; 
+                let rightColX = 260; 
                 let lineSpacing = 30;
                 let blockSpacing = 70;
 
                 // 1. Controls
-                drawCatBall(ctx, leftColX, startY - 15, 15, 1, 1, 1, 0); // 貓圖示縮小
+                drawCatBall(ctx, leftColX, startY - 15, 15, 1, 1, 1, 0); 
                 ctx.fillText('Move:   Arrow Keys', rightColX, startY);
                 ctx.fillText('Jump:   Space (You can double jump!)', rightColX, startY + lineSpacing);
 
@@ -585,7 +586,8 @@
                 // 底部 (置中)
                 ctx.textAlign = 'center';
                 ctx.fillStyle = '#FFD700'; 
-                ctx.fillText('Press ENTER to Continue', 400, 360);
+                // 【修改】Y 座標向上移動 (360 -> 340)
+                ctx.fillText('Press ENTER to Continue', 400, 340);
 
                 ctx.restore();
             }
