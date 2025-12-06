@@ -4,17 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cat Mario | Vibe Edition</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 --- */
         body {
             margin: 0;
-            background: #1a1a2e;
+            background: url('image_3.png') no-repeat center center fixed; /* 使用圖片作為背景 */
+            background-size: cover; /* 填滿畫面 */
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             color: #fff;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Press Start 2P', cursive; /* 應用像素風格字體 */
             overflow: hidden;
             user-select: none; /* 防止連點選取文字 */
         }
@@ -23,7 +25,7 @@
             box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
         }
         canvas {
-            background: linear-gradient(to bottom, #87CEEB, #E0F7FA);
+            background: transparent; /* 背景透明，顯示body背景 */
             display: block;
             border-radius: 4px;
         }
@@ -31,8 +33,7 @@
             position: absolute;
             top: 10px;
             left: 10px;
-            font-size: 20px;
-            font-weight: bold;
+            font-size: 16px; /* 調整像素字體大小 */
             text-shadow: 2px 2px 0 #000;
             pointer-events: none;
         }
@@ -43,18 +44,40 @@
             text-align: right;
             pointer-events: none;
             text-shadow: 2px 2px 0 #000;
+            font-size: 16px; /* 調整像素字體大小 */
         }
         #message {
             position: absolute;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 40px;
-            font-weight: bold;
             text-align: center;
-            text-shadow: 3px 3px 0 #000;
-            display: none;
-            white-space: pre-wrap; /* 讓 \n 換行生效 */
+            display: flex; /* 使用 flex 以便垂直排列 */
+            flex-direction: column;
+            align-items: center;
+            gap: 20px; /* 元素間距 */
+            z-index: 10; /* 確保在最上層 */
+        }
+        #msgTitle {
+            font-size: 32px; /* 調整標題大小 */
+            font-weight: bold;
+            text-shadow: 4px 4px 0 #000;
+            margin: 0; /* 移除預設邊距 */
+        }
+        #startPrompt {
+            font-size: 16px;
+            text-shadow: 2px 2px 0 #000;
+            margin: 0;
+        }
+        #playButton {
+            width: 0;
+            height: 0;
+            border-top: 20px solid transparent;
+            border-bottom: 20px solid transparent;
+            border-left: 30px solid #fff; /* 像素風格白色三角形 */
+            cursor: pointer;
+            filter: drop-shadow(2px 2px 0 #000); /* 添加陰影 */
+            margin-top: 10px; /* 與上方文字的間距 */
         }
     </style>
 </head>
@@ -67,11 +90,12 @@
         </div>
         <div class="hud-right">
             <div>Score: <span id="scoreDisplay">0</span></div>
-            <div style="font-size: 14px; color: #ffd700;">High Score: <span id="highScoreDisplay">0</span></div>
+            <div style="font-size: 12px; color: #ffd700;">High Score: <span id="highScoreDisplay">0</span></div>
         </div>
         <div id="message">
             <div id="msgTitle">LEVEL 1</div>
-            <div style="font-size: 20px; margin-top: 10px;">Press SPACE to Start</div>
+            <div id="startPrompt">Press space to start!</div>
+            <div id="playButton"></div>
         </div>
         <canvas id="gameCanvas" width="800" height="400"></canvas>
     </div>
@@ -182,6 +206,13 @@
             }
         });
         window.addEventListener('keyup', e => keys[e.code] = false);
+        
+        // 點擊開始按鈕也可以開始遊戲
+        document.getElementById('playButton').addEventListener('click', () => {
+             if (gameState === 'START' || gameState === 'GAME_OVER' || gameState === 'WIN') {
+                resetGame();
+            }
+        });
 
         function resetGame() {
             // 讀取檢查點
@@ -198,6 +229,7 @@
             gameState = 'PLAYING';
             
             let msg = `LEVEL ${level}`;
+            let prompt = 'Press SPACE to Start';
             
             // 檢查點訊息邏輯
             if (level === 3) {
@@ -216,7 +248,7 @@
                 }
             }
 
-            showMessage(msg, 2000);
+            showMessage(msg, prompt, 2000);
         }
 
         function updateUI() {
@@ -225,11 +257,24 @@
             document.getElementById('scoreDisplay').innerText = score;
         }
 
-        function showMessage(text, duration = 0) {
+        function showMessage(titleText, promptText, duration = 0) {
             const msgDiv = document.getElementById('message');
             const title = document.getElementById('msgTitle');
-            title.innerText = text;
-            msgDiv.style.display = 'block';
+            const prompt = document.getElementById('startPrompt');
+            const playBtn = document.getElementById('playButton');
+
+            title.innerText = titleText;
+            prompt.innerText = promptText;
+            
+            if (gameState === 'START') {
+                 playBtn.style.display = 'block';
+                 prompt.style.display = 'block';
+            } else {
+                 playBtn.style.display = 'none';
+                 prompt.style.display = (promptText ? 'block' : 'none');
+            }
+            
+            msgDiv.style.display = 'flex'; // 使用 flex 顯示
             
             if (duration > 0) {
                 setTimeout(() => {
@@ -328,7 +373,7 @@
                             score += 5000;
                             gameState = 'WIN'; 
                             savedCheckpoint = 1; // 勝利後，檢查點重置回第1關
-                            showMessage('YOU WIN!\nCat Hero!\nPress Space to Restart', 0);
+                            showMessage('YOU WIN!\nCat Hero!', 'Press Space to Restart', 0);
                         }
                     } else {
                         playerDie();
@@ -348,7 +393,7 @@
                 if (savedCheckpoint > 1) {
                     msg += `\nCheckpoint: Level ${savedCheckpoint}`;
                 }
-                showMessage(msg);
+                showMessage(msg, 'Press Space to Restart');
                 
                 if (score > highScore) {
                     highScore = score;
@@ -375,41 +420,56 @@
             }
             ctx.translate(-camX, 0);
 
-            // 畫平台
-            ctx.fillStyle = '#654321';
+            // 畫平台 (像素風格)
             platforms.forEach(p => {
-                ctx.fillRect(p.x, p.y, p.w, p.h);
-                ctx.fillStyle = '#4CAF50';
+                // 土壤部分
+                ctx.fillStyle = '#8B4513'; // 深褐色
+                ctx.fillRect(p.x, p.y + 5, p.w, p.h - 5);
+                // 草地部分
+                ctx.fillStyle = '#228B22'; // 森林綠
                 ctx.fillRect(p.x, p.y, p.w, 5);
-                ctx.fillStyle = '#654321';
+                // 像素邊緣
+                ctx.fillStyle = '#000';
+                ctx.fillRect(p.x, p.y, p.w, 2); // 頂部邊緣
+                ctx.fillRect(p.x, p.y + p.h - 2, p.w, 2); // 底部邊緣
+                ctx.fillRect(p.x, p.y, 2, p.h); // 左側邊緣
+                ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h); // 右側邊緣
             });
 
-            // 畫終點
+            // 畫終點 (像素風格)
             if (goal) {
                 ctx.fillStyle = '#FFD700';
                 ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
                 ctx.fillStyle = '#000';
-                ctx.font = '20px Arial';
+                ctx.font = '16px "Press Start 2P"'; // 使用像素字體
                 ctx.fillText('GOAL', goal.x, goal.y - 10);
+                // 像素邊框
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#000';
+                ctx.strokeRect(goal.x, goal.y, goal.w, goal.h);
             }
 
-            // 畫敵人 (雙耳惡犬)
+            // 畫敵人 (雙耳惡犬 - 像素風格)
             enemies.forEach(e => {
                 if(e.y < 500) {
                     // 身體
                     ctx.fillStyle = '#555';
                     ctx.fillRect(e.x, e.y, e.w, e.h);
-                    
+                    ctx.lineWidth = 2;
+                    ctx.strokeStyle = '#000';
+                    ctx.strokeRect(e.x, e.y, e.w, e.h);
+
                     // 雙耳
                     ctx.beginPath();
-                    ctx.moveTo(e.x, e.y);           
+                    ctx.moveTo(e.x, e.y);            
                     ctx.lineTo(e.x + 5, e.y - 10);  
-                    ctx.lineTo(e.x + 10, e.y);      
+                    ctx.lineTo(e.x + 10, e.y);       
                     
                     ctx.moveTo(e.x + e.w - 10, e.y); 
                     ctx.lineTo(e.x + e.w - 5, e.y - 10); 
-                    ctx.lineTo(e.x + e.w, e.y);      
+                    ctx.lineTo(e.x + e.w, e.y);       
                     ctx.fill();
+                    ctx.stroke();
 
                     // 紅眼 (會轉動)
                     ctx.fillStyle = '#FF0000'; 
@@ -433,23 +493,29 @@
                 ctx.lineTo(boss.x + boss.w - 20, boss.y - 30);
                 ctx.lineTo(boss.x + boss.w, boss.y);
                 ctx.fill();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#000';
+                ctx.stroke();
 
                 // 2. 畫身體
                 ctx.fillRect(boss.x, boss.y, boss.w, boss.h);
+                ctx.strokeRect(boss.x, boss.y, boss.w, boss.h);
 
                 // 3. 畫眼睛
                 ctx.fillStyle = '#fff';
                 ctx.fillRect(boss.x + 20, boss.y + 20, 20, 20);
                 ctx.fillRect(boss.x + 60, boss.y + 20, 20, 20);
 
-                // 4. 血條
+                // 4. 血條 (像素風格)
+                ctx.fillStyle = '#000';
+                ctx.fillRect(boss.x, boss.y - 24, 104, 14); // 血條外框
                 ctx.fillStyle = 'red';
-                ctx.fillRect(boss.x, boss.y - 20, 100, 10);
-                ctx.fillStyle = 'green';
-                ctx.fillRect(boss.x, boss.y - 20, 100 * (boss.hp / 10), 10);
+                ctx.fillRect(boss.x + 2, boss.y - 22, 100, 10);
+                ctx.fillStyle = '#228B22';
+                ctx.fillRect(boss.x + 2, boss.y - 22, 100 * (boss.hp / 10), 10);
             }
 
-            // 畫玩家 (白貓里奧)
+            // 畫玩家 (白貓里奧 - 像素風格)
             const p = player;
             const x = p.x;
             const y = p.y;
@@ -481,11 +547,13 @@
             ctx.fillRect(x + 6 + eyeOffset, y + 10, 3, 3);
             ctx.fillRect(x + w - 9 + eyeOffset, y + 10, 3, 3);
 
-           
             ctx.restore(); 
             
             requestAnimationFrame(draw);
         }
+
+        // 初始顯示第一幕
+        showMessage('LEVEL 1', 'Press space to start!', 0);
 
         setInterval(update, 1000/60);
         draw();
