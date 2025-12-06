@@ -50,7 +50,7 @@
             line-height: 2.5; /* 右上角資訊行距 */
         }
 
-        /* --- 訊息與按鈕區域 (修正重點) --- */
+        /* --- 訊息與按鈕區域 --- */
         #message {
             position: absolute;
             top: 48%; /* 稍微置中偏上 */
@@ -405,11 +405,32 @@
                 ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
             });
 
-            // 畫終點
+            // 畫終點 (像素風格門)
             if (goal) {
-                ctx.fillStyle = '#FFD700'; ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
-                ctx.fillStyle = '#000'; ctx.font = '16px "Press Start 2P"'; ctx.fillText('GOAL', goal.x, goal.y - 10);
-                ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.strokeRect(goal.x, goal.y, goal.w, goal.h);
+                // 1. 門板
+                ctx.fillStyle = '#8B4513'; // 棕色木門
+                ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
+                // 2. 門框與紋理 (像素邊緣)
+                ctx.fillStyle = '#5c3317'; // 深棕色
+                ctx.fillRect(goal.x, goal.y, goal.w, 4); // 頂部
+                ctx.fillRect(goal.x, goal.y, 4, goal.h); // 左側
+                ctx.fillRect(goal.x + goal.w - 4, goal.y, 4, goal.h); // 右側
+                ctx.fillRect(goal.x + 10, goal.y + 10, goal.w - 20, 4); // 門板上方紋理
+                ctx.fillRect(goal.x + 10, goal.y + goal.h - 15, goal.w - 20, 4); // 門板下方紋理
+                // 3. 門把 (像素點)
+                ctx.fillStyle = '#DAA520'; // 金色門把
+                ctx.fillRect(goal.x + goal.w - 12, goal.y + goal.h / 2 - 4, 8, 8);
+                // 4. 整體黑色邊框
+                ctx.lineWidth = 2; 
+                ctx.strokeStyle = '#000'; 
+                ctx.strokeRect(goal.x, goal.y, goal.w, goal.h);
+
+                // 5. 文字對齊修正
+                ctx.fillStyle = '#000'; 
+                ctx.font = '16px "Press Start 2P"';
+                ctx.textAlign = 'center'; // 文字水平置中
+                ctx.fillText('GOAL', goal.x + goal.w / 2, goal.y - 10); // x 座標移到門的中心
+                ctx.textAlign = 'start'; // 恢復預設對齊，以免影響其他繪圖
             }
 
             // 畫敵人
