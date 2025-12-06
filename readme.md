@@ -3,8 +3,6 @@
 這是一個基於 HTML5 Canvas 和原生 JavaScript 開發的 2D 橫向捲軸平台跳躍遊戲。
 遊戲特色是一隻可愛的橘色貓咪球，擁有 Q 彈的物理效果與流暢的動作動畫。玩家需要躲避敵人、收集金幣、跨越障礙，並在最後關卡挑戰大魔王。
 
-![Game Screenshot]("")
-
 ## ✨ 特色 (Features)
 
 * **無外部素材依賴 (No External Assets)**：所有的圖形（貓咪、敵人、背景、UI、金幣）皆使用 JavaScript Canvas API 即時幾何繪製，單一 HTML 檔案即可運作。
