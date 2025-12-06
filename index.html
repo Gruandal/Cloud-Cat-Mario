@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Final Fixes</title>
+    <title>Cat Mario | Polished Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 (維持不變) --- */
@@ -137,30 +137,25 @@
             ctx.rotate(rotation);
             ctx.scale(sx, sy); 
             
-            // 身體
             ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2);
             ctx.fillStyle = '#FFA500'; ctx.fill();
             ctx.lineWidth = 3; ctx.strokeStyle = '#8B4500'; ctx.stroke();
 
-            // 虎斑紋
             ctx.fillStyle = '#8B4500';
             ctx.beginPath(); ctx.ellipse(0, -radius+5, 4, 8, 0, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(-8, -radius+7, 3, 6, -0.3, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(8, -radius+7, 3, 6, 0.3, 0, Math.PI*2); ctx.fill();
 
-            // 耳朵 (內縮版)
             ctx.fillStyle = '#FFA500';
             ctx.beginPath(); 
             ctx.moveTo(-16, -radius + 8); ctx.lineTo(-12, -radius - 4); ctx.lineTo(-6, -radius + 5);
             ctx.moveTo(16, -radius + 8); ctx.lineTo(12, -radius - 4); ctx.lineTo(6, -radius + 5);
             ctx.fill(); ctx.stroke();
             
-            // 耳內粉色
             ctx.fillStyle = '#FFC0CB'; 
             ctx.beginPath(); ctx.moveTo(-14, -radius + 7); ctx.lineTo(-12, -radius - 1); ctx.lineTo(-8, -radius + 6); ctx.fill();
             ctx.beginPath(); ctx.moveTo(14, -radius + 7); ctx.lineTo(12, -radius - 1); ctx.lineTo(8, -radius + 6); ctx.fill();
 
-            // 臉部
             let faceX = facing * 4;
             ctx.fillStyle = '#000';
             ctx.beginPath(); ctx.arc(-6 + faceX, 0, 3, 0, Math.PI*2); ctx.fill();
@@ -207,7 +202,7 @@
             ctx.restore();
         }
 
-        // 繪製背景 (天空與太陽)
+        // 繪製背景
         function drawBackground() {
             ctx.save(); ctx.resetTransform(); 
             let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -229,18 +224,19 @@
         function generateLevel(lvl) {
             platforms = []; enemies = []; boss = null; goal = null; coins = [];
 
-            // 【修正】確保出生點是安全且足夠長的地面
-            platforms.push({x: -200, y: GROUND_Y, w: 600, h: 50, type: 'ground', visible: true});
-            let currentGroundX = 400; // 從出生點後開始生成
+            // 【修正】確保出生點安全，並加長以產生重疊，消除接縫線
+            platforms.push({x: -200, y: GROUND_Y, w: 650, h: 50, type: 'ground', visible: true});
+            let currentGroundX = 400; 
 
             const levelEnd = (lvl === 6) ? 1000 : 2800; 
-            
+            let lastGroundPlatform = null; // 追蹤最後一塊地面
+
             while(currentGroundX < levelEnd) {
                 let blockWidth = 200 + Math.random() * 300;
-                // 【修正】終點門附近的地面也要是實心的
-                if (currentGroundX + blockWidth > levelEnd - 100) blockWidth = Math.max(blockWidth, 300);
+                if (currentGroundX < 50 && currentGroundX + blockWidth > 50) blockWidth = Math.max(blockWidth, 300);
 
-                platforms.push({x: currentGroundX, y: GROUND_Y, w: blockWidth, h: 50, type: 'ground', visible: true});
+                lastGroundPlatform = {x: currentGroundX, y: GROUND_Y, w: blockWidth, h: 50, type: 'ground', visible: true};
+                platforms.push(lastGroundPlatform);
 
                 if (Math.random() > 0.5) {
                      coins.push({x: currentGroundX + blockWidth / 2, y: GROUND_Y - 15, r: 8, collected: false});
@@ -271,8 +267,12 @@
 
                     currentX += width + gap;
                 }
-                // 【修正】確保終點座標在實心平台上
-                goal = {x: currentGroundX - 100, y: 300, w: 40, h: 50};
+                // 【修正】確保終點在最後一塊實心地面上
+                if (lastGroundPlatform) {
+                    goal = {x: lastGroundPlatform.x + lastGroundPlatform.w - 60, y: GROUND_Y - 50, w: 40, h: 50};
+                } else {
+                    goal = {x: currentGroundX, y: 300, w: 40, h: 50}; // fallback
+                }
             }
 
             if (lvl === 6) {
@@ -452,7 +452,6 @@
             let camX = 0; if (level !== 6) camX = Math.max(0, player.x - 200);
             ctx.translate(-camX, 0);
 
-            // 繪製平台與地面
             platforms.forEach(p => {
                 if (!p.visible) return;
                 ctx.fillStyle = '#8B4513'; ctx.fillRect(p.x, p.y + 5, p.w, p.h - 5);
@@ -460,18 +459,23 @@
                 ctx.fillStyle = '#000';
                 ctx.fillRect(p.x, p.y, p.w, 2); ctx.fillRect(p.x, p.y + p.h - 2, p.w, 2);
                 ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
-                // 【修正】地板點綴 (限制範圍)
+                
+                // 【修正】地板點綴 (嚴格限制範圍)
                 if (p.type === 'ground') {
                     ctx.fillStyle = '#5d3a1a'; 
                     let seed = p.x; 
-                    for(let i = p.x + 5; i < p.x + p.w - 5; i += 20) {
+                    // X範圍：從 p.x + 10 開始，到 p.x + p.w - 15 結束 (避開左右邊緣)
+                    for(let i = p.x + 10; i < p.x + p.w - 15; i += 30) {
                         seed = (seed * 9301 + 49297) % 233280; 
-                        let randY = (seed / 233280) * (p.h - 20) + 15;
-                        let randX = (seed % 15);
-                        // 確保不超出土壤範圍
-                        if(p.y + randY < p.y + p.h - 6) {
-                             ctx.fillRect(i + randX, p.y + randY, 6, 6);
-                        }
+                        let randX = (seed % 10);
+                        // Y範圍：計算可用高度，確保在土壤層內 (草地以下，底部以上)
+                        // 土壤從 p.y + 5 開始。點高 6px。
+                        let soilTop = p.y + 5;
+                        let soilBottom = p.y + p.h - 2; // 避開底部邊框
+                        let availableH = soilBottom - soilTop - 8; // 額外緩衝
+                        let randY = (seed / 233280) * availableH + soilTop + 2;
+
+                        ctx.fillRect(i + randX, randY, 6, 6);
                     }
                 }
             });
@@ -494,12 +498,13 @@
 
             if (boss && boss.active) {
                 drawEnemyBall(ctx, boss.x, boss.y, boss.r, boss.vx > 0 ? 1 : -1, boss.rotation);
-                // 【修正】血條置中
+                // 【修正】血條更靠近BOSS
                 let barWidth = 104;
                 let barX = boss.x + boss.r - barWidth / 2; 
-                ctx.fillStyle = '#000'; ctx.fillRect(barX, boss.y - boss.r - 20, barWidth, 14);
-                ctx.fillStyle = 'red'; ctx.fillRect(barX + 2, boss.y - boss.r - 18, 100, 10);
-                ctx.fillStyle = '#228B22'; ctx.fillRect(barX + 2, boss.y - boss.r - 18, 100 * (boss.hp / 10), 10);
+                let barY = boss.y - boss.r - 10; // 距離縮短到 10px
+                ctx.fillStyle = '#000'; ctx.fillRect(barX, barY, barWidth, 14);
+                ctx.fillStyle = 'red'; ctx.fillRect(barX + 2, barY + 2, 100, 10);
+                ctx.fillStyle = '#228B22'; ctx.fillRect(barX + 2, barY + 2, 100 * (boss.hp / 10), 10);
             }
 
             if (gameState === 'PLAYING' || gameState === 'START') {
