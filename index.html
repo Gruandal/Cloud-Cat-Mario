@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Seamless Ground Final</title>
+    <title>Cat Mario | Final Seamless Polish</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 (維持不變) --- */
@@ -148,7 +148,7 @@
             ctx.beginPath(); ctx.ellipse(-8, -radius+7, 3, 6, -0.3, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(8, -radius+7, 3, 6, 0.3, 0, Math.PI*2); ctx.fill();
 
-            // 耳朵
+            // 耳朵 (內縮版)
             ctx.fillStyle = '#FFA500';
             ctx.beginPath(); 
             ctx.moveTo(-16, -radius + 8); ctx.lineTo(-12, -radius - 4); ctx.lineTo(-6, -radius + 5);
@@ -233,14 +233,14 @@
             const levelEnd = (lvl === 6) ? 1000 : 2800; 
             let lastGroundPlatform = null;
 
-            // 【重點修正】直接生成一個超長的起始安全地面，保證無接縫
-            let initialSafeWidth = 800;
+            // 【重點修正】第一段路改成單一巨大的區塊，消除接縫
+            // 直接從 -200 延伸到 800 (足夠覆蓋第一畫面且留有餘地)
+            let initialSafeWidth = 1000;
             lastGroundPlatform = {x: currentGroundX, y: GROUND_Y, w: initialSafeWidth, h: 50, type: 'ground', visible: true};
             platforms.push(lastGroundPlatform);
             
-            // 更新 currentGroundX 到這個大區塊之後，並加上第一個間隙
+            // 下一段地面從 gap 之後開始
             currentGroundX += initialSafeWidth + (60 + Math.random() * 80);
-
 
             while(currentGroundX < levelEnd) {
                 let blockWidth = 200 + Math.random() * 300;
@@ -280,7 +280,6 @@
                     currentX += width + gap;
                 }
                 if (lastGroundPlatform) {
-                    // 確保終點在最後一塊實心地面上
                     goal = {x: lastGroundPlatform.x + lastGroundPlatform.w - 80, y: GROUND_Y - 50, w: 40, h: 50};
                 } else {
                     goal = {x: currentGroundX, y: 300, w: 40, h: 50};
@@ -473,19 +472,22 @@
                 ctx.fillRect(p.x, p.y, p.w, 2); ctx.fillRect(p.x, p.y + p.h - 2, p.w, 2);
                 ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
                 
-                // 【修正】地板點綴 (嚴格限制範圍，確保不溢出)
+                // 【修正】地板點綴 (使用 Math.abs 確保負座標不會出錯)
                 if (p.type === 'ground') {
                     ctx.fillStyle = '#5d3a1a'; 
-                    let seed = p.x; 
-                    // X範圍：左右各內縮 20px，確保不碰到邊框
+                    // seed 使用絕對值，避免負數計算錯誤
+                    let seed = Math.abs(p.x) + 1; 
+                    // X範圍：左右各內縮 20px
                     for(let i = p.x + 20; i < p.x + p.w - 25; i += 30) {
                         seed = (seed * 9301 + 49297) % 233280; 
                         let randX = (seed % 10);
-                        // Y範圍：嚴格限制在草地下方和底線上方
-                        let soilTop = p.y + 6; // 草地(5px) + 邊框(1px)下
-                        let soilBottom = p.y + p.h - 8; // 底部留空
+                        
+                        // Y範圍：嚴格限制
+                        let soilTop = p.y + 6; 
+                        let soilBottom = p.y + p.h - 8; 
                         let availableH = soilBottom - soilTop;
-                        let randY = (seed / 233280) * availableH + soilTop;
+                        // 確保百分比計算不會出錯
+                        let randY = ((Math.abs(seed) % 100) / 100) * availableH + soilTop;
 
                         ctx.fillRect(i + randX, randY, 6, 6);
                     }
@@ -510,10 +512,10 @@
 
             if (boss && boss.active) {
                 drawEnemyBall(ctx, boss.x, boss.y, boss.r, boss.vx > 0 ? 1 : -1, boss.rotation);
-                // 【修正】血條更靠近BOSS，緊貼頭頂
+                // 【修正】血條緊貼頭頂 (距離25px，非常近)
                 let barWidth = 104;
                 let barX = boss.x + boss.r - barWidth / 2; 
-                let barY = boss.y - boss.r - 2; // 距離縮短到 2px
+                let barY = boss.y - 25; 
                 ctx.fillStyle = '#000'; ctx.fillRect(barX, barY, barWidth, 14);
                 ctx.fillStyle = 'red'; ctx.fillRect(barX + 2, barY + 2, 100, 10);
                 ctx.fillStyle = '#228B22'; ctx.fillRect(barX + 2, barY + 2, 100 * (boss.hp / 10), 10);
