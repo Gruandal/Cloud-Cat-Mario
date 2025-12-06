@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | How to Play Added</title>
+    <title>Cat Mario | Updated Rules Screen</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 (維持不變) --- */
@@ -36,7 +36,7 @@
             position: absolute; top: 20px; left: 20px;
             font-size: 14px; text-shadow: 3px 3px 0 #000;
             pointer-events: none; line-height: 2.5;
-            z-index: 20; /* 確保 UI 在遮罩層之上 */
+            z-index: 20;
         }
         .hud-right {
             position: absolute; top: 20px; right: 20px;
@@ -51,7 +51,7 @@
             /* display: flex; 在 JS 中控制 */
             flex-direction: column;
             align-items: center; gap: 30px;
-            z-index: 30; width: 100%; /* 最高層級 */
+            z-index: 30; width: 100%;
         }
         #msgTitle {
             font-size: 32px; font-weight: bold;
@@ -85,7 +85,8 @@
             <div style="font-size: 10px; color: #ffd700;">High Score: <span id="highScoreDisplay">0</span></div>
         </div>
         
-        <div id="message" style="display: none;"> <div id="msgTitle">LEVEL 1</div>
+        <div id="message" style="display: none;">
+            <div id="msgTitle">LEVEL 1</div>
             <div id="startPrompt">Press space to start!</div>
             <div id="playButton"></div>
         </div>
@@ -97,7 +98,7 @@
         const canvas = document.getElementById('gameCanvas');
         const ctx = canvas.getContext('2d');
 
-        // 遊戲狀態：新增 'HOW_TO_PLAY' 為初始狀態
+        // 遊戲狀態
         let gameState = 'HOW_TO_PLAY'; 
         let level = 1; let savedCheckpoint = 1; 
         let lives = 3; let score = 0;
@@ -139,30 +140,25 @@
             ctx.rotate(rotation);
             ctx.scale(sx, sy); 
             
-            // 身體
             ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2);
             ctx.fillStyle = '#FFA500'; ctx.fill();
             ctx.lineWidth = 3; ctx.strokeStyle = '#8B4500'; ctx.stroke();
 
-            // 虎斑紋
             ctx.fillStyle = '#8B4500';
             ctx.beginPath(); ctx.ellipse(0, -radius+5, 4, 8, 0, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(-8, -radius+7, 3, 6, -0.3, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(8, -radius+7, 3, 6, 0.3, 0, Math.PI*2); ctx.fill();
 
-            // 耳朵
             ctx.fillStyle = '#FFA500';
             ctx.beginPath(); 
             ctx.moveTo(-16, -radius + 8); ctx.lineTo(-12, -radius - 4); ctx.lineTo(-6, -radius + 5);
             ctx.moveTo(16, -radius + 8); ctx.lineTo(12, -radius - 4); ctx.lineTo(6, -radius + 5);
             ctx.fill(); ctx.stroke();
             
-            // 耳內粉色
             ctx.fillStyle = '#FFC0CB'; 
             ctx.beginPath(); ctx.moveTo(-14, -radius + 7); ctx.lineTo(-12, -radius - 1); ctx.lineTo(-8, -radius + 6); ctx.fill();
             ctx.beginPath(); ctx.moveTo(14, -radius + 7); ctx.lineTo(12, -radius - 1); ctx.lineTo(8, -radius + 6); ctx.fill();
 
-            // 臉部
             let faceX = facing * 4;
             ctx.fillStyle = '#000';
             ctx.beginPath(); ctx.arc(-6 + faceX, 0, 3, 0, Math.PI*2); ctx.fill();
@@ -308,17 +304,14 @@
         const keys = {};
         window.addEventListener('keydown', e => {
             keys[e.code] = true; 
-            // 防止特定按鍵滾動頁面
             if(e.code === 'Space' || e.code === 'KeyW' || e.code === 'Enter') e.preventDefault(); 
             
-            // 【新增】在 HOW_TO_PLAY 狀態下，按下 Enter 切換到 START 狀態
             if (gameState === 'HOW_TO_PLAY' && e.code === 'Enter') {
                 gameState = 'START';
                 showMessage('LEVEL 1', 'Press SPACE to Start', 0);
                 return;
             }
 
-            // 原本的遊戲控制邏輯
             if (e.code === 'Space' || e.code === 'KeyW') {
                 if (gameState === 'START' || gameState === 'GAME_OVER' || gameState === 'WIN') { resetGame(); }
                 else if (gameState === 'PLAYING') {
@@ -362,14 +355,13 @@
             const prompt = document.getElementById('startPrompt'); const playBtn = document.getElementById('playButton');
             title.innerText = titleText; prompt.innerText = promptText;
             
-            // 根據狀態控制顯示
             if (gameState === 'START') { 
                 playBtn.style.display = 'block'; 
                 prompt.style.display = 'block'; 
                 msgDiv.style.display = 'flex';
             }
             else if (gameState === 'HOW_TO_PLAY') {
-                 msgDiv.style.display = 'none'; // 規則頁面不顯示這個訊息框
+                 msgDiv.style.display = 'none';
             }
             else { 
                 playBtn.style.display = 'none'; 
@@ -382,7 +374,6 @@
 
         // --- 物理更新 ---
         function update() {
-            // 【修改】HOW_TO_PLAY 狀態下也不更新物理
             if (gameState !== 'PLAYING') return;
             
             if (keys['ArrowLeft'] || keys['KeyA']) { player.vx = -SPEED; player.facing = -1; }
@@ -459,9 +450,7 @@
                 let dx = (player.x + player.radius) - (boss.x + boss.r); 
                 let dy = (player.y + player.radius) - (boss.y + boss.r); 
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                // 【修正】判定範圍大幅放寬
                 if (dist < player.radius + boss.r) {
-                    // 只要玩家是往下掉的，並且接觸點在 BOSS 底部邊緣之上 (幾乎只要不是從正下方往上撞都算贏)
                     if (player.vy > 0 && player.y + player.radius < boss.y + boss.r - 10) {
                         boss.hp--; player.vy = -10; 
                         if (boss.hp <= 0) { boss.active = false; score += 5000; gameState = 'WIN'; savedCheckpoint = 1; showMessage('YOU WIN!\nCat Hero!', 'Press Space to Restart', 0); }
@@ -545,43 +534,42 @@
                 drawCatBall(ctx, player.x, player.y, player.radius, player.facing, player.squash, player.stretch, player.rotation);
             }
 
-            // 【新增】繪製 HOW_TO_PLAY 畫面
+            // 【修改】HOW_TO_PLAY 畫面：更新文字、字體大小與排版
             if (gameState === 'HOW_TO_PLAY') {
-                // 繪製半透明遮罩
                 ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
                 ctx.fillRect(camX, 0, canvas.width, canvas.height);
 
-                // 繪製規則文字與圖示
                 ctx.save();
-                ctx.translate(camX, 0); // 抵銷可能的攝影機偏移
+                ctx.translate(camX, 0);
                 ctx.fillStyle = '#FFF';
                 ctx.textAlign = 'center';
                 
-                // 標題
                 ctx.font = '24px "Press Start 2P"';
                 ctx.fillText('HOW TO PLAY', 400, 60);
 
-                // 規則內容
-                ctx.font = '16px "Press Start 2P"';
+                // 【修改】字體變小 (14px)，調整起始 Y 座標與行高
+                ctx.font = '14px "Press Start 2P"';
                 ctx.textAlign = 'left';
-                let startY = 120; let lineH = 35; let iconX = 180; let textX = 240;
+                let startY = 130; let lineH = 40; 
+                // 【修改】調整 X 座標讓整體更置中
+                let iconX = 260; let textX = 320;
 
-                // 1. 移動與跳躍 (搭配玩家圖示)
+                // 1. 移動與跳躍
                 drawCatBall(ctx, iconX, startY - 20, 20, 1, 1, 1, 0);
-                ctx.fillText('Move: Arrow Keys / A, D', textX, startY);
-                ctx.fillText('Jump: Space / W (Double jump!)', textX, startY + lineH);
+                ctx.fillText('Move:   Arrow Keys', textX, startY); // 增加空格對齊
+                ctx.fillText('Jump:   Space  (You can double jump!)', textX, startY + lineH);
 
-                // 2. 敵人與攻擊 (搭配敵人圖示)
+                // 2. 敵人與攻擊
                 startY += lineH * 3;
                 drawEnemyBall(ctx, iconX, startY - 20, 20, -1, 0);
                 ctx.fillText('Avoid Enemies & Pits', textX, startY);
                 ctx.fillText('Jump on heads to defeat!', textX, startY + lineH);
 
-                // 3. 目標 (搭配終點圖示 - 簡易版)
+                // 3. 目標
                 startY += lineH * 3;
-                ctx.fillStyle = '#8B4513'; ctx.fillRect(iconX - 15, startY - 30, 30, 40); // 門板
-                ctx.fillStyle = '#DAA520'; ctx.fillRect(iconX + 5, startY - 15, 6, 6);   // 門把
-                ctx.fillStyle = '#FFF'; // 改回白色寫字
+                ctx.fillStyle = '#8B4513'; ctx.fillRect(iconX - 15, startY - 30, 30, 40);
+                ctx.fillStyle = '#DAA520'; ctx.fillRect(iconX + 5, startY - 15, 6, 6);
+                ctx.fillStyle = '#FFF';
                 ctx.fillText('Goal: Reach the door!', textX, startY);
 
                 // 底部提示
@@ -595,12 +583,7 @@
             requestAnimationFrame(draw);
         }
 
-        // 初始化關卡物件，讓 HOW_TO_PLAY 狀態有背景可看
         generateLevel(1);
-        
-        // 初始狀態改為 HOW_TO_PLAY，所以這裡不需要呼叫 showMessage
-        // showMessage('LEVEL 1', 'Press space to start!', 0);
-
         setInterval(update, 1000/60);
         draw();
     </script>
