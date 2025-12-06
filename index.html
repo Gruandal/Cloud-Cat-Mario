@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Perfect Rolling & Pixel Sun</title>
+    <title>Cat Mario | Final Ear & Patrol Fix</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 (維持不變) --- */
@@ -111,7 +111,7 @@
         // 玩家設定
         const player = {
             x: 50, y: 300, 
-            radius: 20, w: 40, h: 40, // w, h 用於碰撞計算統一
+            radius: 20, w: 40, h: 40, 
             vx: 0, vy: 0,
             grounded: false, 
             facing: 1, 
@@ -128,22 +128,12 @@
         // --- 繪圖函數區 ---
         // ==========================================
 
-        // 【修正核心】繪製橘貓球 (修正陷地與耳朵走位)
+        // 繪製橘貓球 (【修正】耳朵樣式：分開且更挺拔)
         function drawCatBall(ctx, x, y, radius, facing, sx, sy, rotation) {
             ctx.save();
-            
-            // 1. 計算擠壓造成的垂直位移補償
-            // 當球變扁 (sy < 1) 時，需要向下移動，保持底部貼地
             let squashOffset = radius * (1 - sy);
-            
-            // 2. 移動到球體中心 (並加上擠壓補償)
-            // x, y 是包圍盒左上角，中心點是 x+radius, y+radius
             ctx.translate(x + radius, y + radius + squashOffset); 
-            
-            // 3. 旋轉 (圍繞中心)
             ctx.rotate(rotation);
-            
-            // 4. 彈性變形 (圍繞中心縮放)
             ctx.scale(sx, sy); 
             
             // --- 以下繪圖座標皆相對於中心點 (0,0) ---
@@ -159,15 +149,19 @@
             ctx.beginPath(); ctx.ellipse(-8, -radius+7, 3, 6, -0.3, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(8, -radius+7, 3, 6, 0.3, 0, Math.PI*2); ctx.fill();
 
-            // 耳朵 (座標微調以確保貼合)
+            // 【重點修正】耳朵：根部分開，角度更挺
             ctx.fillStyle = '#FFA500';
             ctx.beginPath(); 
-            ctx.moveTo(-8, -radius+2); ctx.lineTo(-15, -radius-6); ctx.lineTo(-2, -radius-2); // 左耳
-            ctx.moveTo(8, -radius+2); ctx.lineTo(15, -radius-6); ctx.lineTo(2, -radius-2);   // 右耳
+            // 左耳 (根部座標往外移，頂點座標往內移，使其更挺拔)
+            ctx.moveTo(-18, -radius + 6); ctx.lineTo(-12, -radius - 8); ctx.lineTo(-6, -radius + 2);
+            // 右耳
+            ctx.moveTo(18, -radius + 6); ctx.lineTo(12, -radius - 8); ctx.lineTo(6, -radius + 2);
             ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#FFC0CB'; // 耳內
-            ctx.beginPath(); ctx.moveTo(-8, -radius+2); ctx.lineTo(-13, -radius-4); ctx.lineTo(-4, -radius-1); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(8, -radius+2); ctx.lineTo(13, -radius-4); ctx.lineTo(4, -radius-1); ctx.fill();
+            
+            // 耳內粉色 (配合新形狀調整)
+            ctx.fillStyle = '#FFC0CB'; 
+            ctx.beginPath(); ctx.moveTo(-16, -radius + 5); ctx.lineTo(-12, -radius - 4); ctx.lineTo(-8, -radius + 3); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(16, -radius + 5); ctx.lineTo(12, -radius - 4); ctx.lineTo(8, -radius + 3); ctx.fill();
 
             // 臉部
             let faceX = facing * 4;
@@ -186,19 +180,16 @@
             ctx.restore();
         }
 
-        // 【更新】繪製敵人球 (支援旋轉)
+        // 繪製敵人球 (保持不變)
         function drawEnemyBall(ctx, x, y, radius, facing, rotation) {
             ctx.save();
-            // 移動到中心並旋轉
             ctx.translate(x + radius, y + radius);
             ctx.rotate(rotation);
             
-            // 繪製相對於中心
             ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2);
             ctx.fillStyle = '#666'; ctx.fill();
             ctx.lineWidth = 2; ctx.strokeStyle = '#333'; ctx.stroke();
             
-            // 臉部也會跟著轉
             let lookX = facing * 4;
             ctx.fillStyle = '#F00';
             ctx.beginPath(); ctx.rect(-8 + lookX, -4, 6, 6); ctx.fill();
@@ -209,17 +200,17 @@
             ctx.restore();
         }
 
-        // 【更新】繪製背景 (加入像素太陽)
+        // 繪製背景 (保持不變)
         function drawBackground() {
             ctx.save(); ctx.resetTransform(); 
             let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             skyGradient.addColorStop(0, "#5C94FC"); skyGradient.addColorStop(1, "#87CEEB"); 
             ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 【新增】像素太陽
-            ctx.fillStyle = '#FFD700'; // 金黃色
-            ctx.fillRect(680, 40, 40, 40); // 太陽本體
-            ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; // 光暈
+            // 像素太陽
+            ctx.fillStyle = '#FFD700'; 
+            ctx.fillRect(680, 40, 40, 40); 
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; 
             ctx.fillRect(670, 50, 60, 20); 
             ctx.fillRect(690, 30, 20, 60);
 
@@ -256,7 +247,7 @@
                         enemies.push({
                             x: currentX + 20, y: height - 30, r: 15, w:30, h:30,
                             vx: 2 + (lvl * 0.2), minX: currentX, maxX: currentX + width,
-                            rotation: 0 // 敵人也會旋轉
+                            rotation: 0 
                         });
                     }
                     currentX += width + gap;
@@ -271,7 +262,7 @@
                 boss = {
                     x: 400, y: 250, r: 50, w: 100, h: 100,
                     vx: 3, vy: 0, hp: 10, active: true, minX: 0, maxX: 700,
-                    rotation: 0 // BOSS 加入旋轉屬性
+                    rotation: 0 
                 };
             }
         }
@@ -350,12 +341,11 @@
             }
 
             player.grounded = false;
-            // 使用矩形碰撞箱進行平台檢測 (更穩定)
             platforms.forEach(p => {
                 if (player.x < p.x + p.w && player.x + player.w > p.x &&
                     player.y < p.y + p.h && player.y + player.h > p.y) {
                     if (player.vy > 0 && player.y + player.h < p.y + 20) {
-                        player.y = p.y - player.h; // 修正為使用矩形高度
+                        player.y = p.y - player.h; 
                         player.vy = 0;
                         player.grounded = true;
                         player.canDoubleJump = true; 
@@ -369,10 +359,14 @@
             if (player.y > canvas.height) playerDie();
             if (goal && player.x > goal.x && player.x < goal.x + goal.w && player.y > goal.y) levelComplete();
 
-            // 更新敵人 (加入旋轉)
+            // 更新敵人 (【修正】巡邏範圍)
             enemies.forEach(e => {
-                e.x += e.vx; if (e.x < e.minX || e.x > e.maxX) e.vx *= -1;
-                e.rotation += e.vx / e.r; // 根據速度計算滾動角度
+                e.x += e.vx; 
+                // 往左走看左邊界，往右走看右邊界(x+w)
+                if (e.vx < 0 && e.x < e.minX) { e.x = e.minX; e.vx *= -1; }
+                else if (e.vx > 0 && e.x + e.w > e.maxX) { e.x = e.maxX - e.w; e.vx *= -1; }
+                
+                e.rotation += e.vx / e.r; 
 
                 let dx = (player.x + player.radius) - (e.x + e.r); 
                 let dy = (player.y + player.radius) - (e.y + e.r); 
@@ -383,10 +377,13 @@
                 }
             });
 
-            // 更新 BOSS (加入旋轉)
+            // 更新 BOSS (【修正】巡邏範圍)
             if (boss && boss.active) {
-                boss.x += boss.vx; if (boss.x < boss.minX || boss.x > boss.maxX) boss.vx *= -1;
-                boss.rotation += boss.vx / boss.r; // BOSS 滾動
+                boss.x += boss.vx; 
+                if (boss.vx < 0 && boss.x < boss.minX) { boss.x = boss.minX; boss.vx *= -1; }
+                else if (boss.vx > 0 && boss.x + boss.w > boss.maxX) { boss.x = boss.maxX - boss.w; boss.vx *= -1; }
+                
+                boss.rotation += boss.vx / boss.r; 
 
                 let dx = (player.x + player.radius) - (boss.x + boss.r); 
                 let dy = (player.y + player.radius) - (boss.y + boss.r); 
