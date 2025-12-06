@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Vibe Edition</title>
+    <title>Cat Mario | Cute Vibe Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
-        /* --- CSS 樣式區 --- */
+        /* --- CSS 樣式區 (維持不變) --- */
         body {
             margin: 0;
             background: #222; 
@@ -27,78 +27,55 @@
         canvas {
             background: #5C94FC; 
             display: block;
+            /* 讓 canvas 放大時保持像素顆粒感，不要模糊 */
+            image-rendering: pixelated; 
         }
         
         /* --- UI 介面 --- */
         .ui {
             position: absolute;
-            top: 20px;
-            left: 20px;
-            font-size: 14px;
-            text-shadow: 3px 3px 0 #000;
-            pointer-events: none;
-            line-height: 2.5; /* 左上角資訊行距 */
+            top: 20px; left: 20px;
+            font-size: 14px; text-shadow: 3px 3px 0 #000;
+            pointer-events: none; line-height: 2.5;
         }
         .hud-right {
             position: absolute;
-            top: 20px;
-            right: 20px;
-            text-align: right;
-            pointer-events: none;
-            text-shadow: 3px 3px 0 #000;
-            font-size: 14px;
-            line-height: 2.5; /* 右上角資訊行距 */
+            top: 20px; right: 20px;
+            text-align: right; pointer-events: none;
+            text-shadow: 3px 3px 0 #000; font-size: 14px; line-height: 2.5;
         }
 
         /* --- 訊息與按鈕區域 --- */
         #message {
             position: absolute;
-            top: 48%; /* 稍微置中偏上 */
-            left: 50%;
+            top: 48%; left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            display: flex; 
-            flex-direction: column;
-            align-items: center;
-            gap: 30px; /* 標題、副標、按鈕之間的距離 */
-            z-index: 10; 
-            width: 100%; /* 確保寬度足夠文字伸展 */
+            display: flex; flex-direction: column;
+            align-items: center; gap: 30px;
+            z-index: 10; width: 100%;
         }
         #msgTitle {
-            font-size: 32px; 
-            font-weight: bold;
-            text-shadow: 4px 4px 0 #000;
-            margin: 0; 
-            
-            /* --- 這裡修正了多行文字擁擠的問題 --- */
-            white-space: pre-wrap; /* 讓 \n 換行生效 */
-            line-height: 1.8;      /* 設定大標題的行高，讓文字分開一點 */
+            font-size: 32px; font-weight: bold;
+            text-shadow: 4px 4px 0 #000; margin: 0; 
+            white-space: pre-wrap; line-height: 1.8;
         }
         #startPrompt {
-            font-size: 16px;
-            text-shadow: 2px 2px 0 #000;
-            margin: 0;
-            line-height: 1.5;
+            font-size: 16px; text-shadow: 2px 2px 0 #000;
+            margin: 0; line-height: 1.5;
         }
 
         /* --- 像素三角形播放鍵 --- */
         #playButton {
-            width: 0;
-            height: 0;
+            width: 0; height: 0;
             border-top: 25px solid transparent;
             border-bottom: 25px solid transparent;
-            border-left: 40px solid #fff; /* 純白色三角形 */
-            cursor: pointer;
-            filter: drop-shadow(4px 4px 0 #000); 
+            border-left: 40px solid #fff;
+            cursor: pointer; filter: drop-shadow(4px 4px 0 #000); 
             transition: transform 0.1s;
         }
-        #playButton:hover {
-             transform: scale(1.1); 
-        }
-        #playButton:active {
-             transform: scale(0.9);
-             filter: drop-shadow(2px 2px 0 #000);
-        }
+        #playButton:hover { transform: scale(1.1); }
+        #playButton:active { transform: scale(0.9); filter: drop-shadow(2px 2px 0 #000); }
     </style>
 </head>
 <body>
@@ -144,7 +121,8 @@
 
         // 玩家設定
         const player = {
-            x: 50, y: 300, w: 24, h: 32, vx: 0, vy: 0,
+            x: 50, y: 300, w: 24, h: 24, // 調整碰撞箱高度以配合新素材
+            vx: 0, vy: 0,
             color: '#FFFFFF', grounded: false, facingRight: true 
         };
 
@@ -153,59 +131,96 @@
         let goal = null; 
         let boss = null;
 
-        // --- 繪製背景函數 (程式碼繪圖，不需圖片) ---
+        // ==========================================
+        // --- 【新增】像素角色定義區 ---
+        // ==========================================
+
+        // 1. 定義像素繪圖的輔助函式
+        // ctx: 画布, pattern: 0/1矩阵, x,y: 位置, pixelSize: 像素放大倍率, palette: 颜色盘对象
+        function drawSprite(ctx, pattern, x, y, pixelSize, palette) {
+            pattern.forEach((row, rowIndex) => {
+                row.forEach((pixelCode, colIndex) => {
+                    if (pixelCode !== 0 && palette[pixelCode]) { // 0 為透明
+                        // 畫陰影 (選用，增加立體感)
+                        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+                        ctx.fillRect(x + colIndex * pixelSize + 2, y + rowIndex * pixelSize + 2, pixelSize, pixelSize);
+                        // 畫本體像素
+                        ctx.fillStyle = palette[pixelCode];
+                        ctx.fillRect(x + colIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
+                    }
+                });
+            });
+        }
+
+        // 2. 定義可愛圓潤貓咪的像素圖案 (11x9 grid)
+        // 1=身體主色, 2=眼睛色, 3=鼻子/嘴巴色
+        const CUTE_CAT_SPRITE = [
+            [0,1,0,0,0,0,0,1,0], // 耳朵尖
+            [1,1,1,0,0,0,1,1,1], // 耳朵
+            [1,1,1,1,1,1,1,1,1], // 頭頂
+            [1,2,1,1,1,1,1,2,1], // 眼睛
+            [1,1,1,3,1,3,1,1,1], // 鼻子嘴巴
+            [1,1,1,1,1,1,1,1,1], // 身體
+            [0,1,1,1,1,1,1,1,0], // 身體下半
+            [0,0,1,1,1,1,1,0,0], // 底部
+            [0,0,1,0,0,0,1,0,0]  // 腳
+        ];
+
+        // 3. 定義恐怖魔王的像素圖案 (16x14 grid)
+        // 1=深色皮膚, 2=亮色皮膚, 3=眼白, 4=紅眼珠, 5=牙齒
+        const SCARY_BOSS_SPRITE = [
+            [0,0,1,1,0,0,0,0,0,0,0,0,1,1,0,0], // 角
+            [0,1,2,1,0,0,0,0,0,0,0,0,1,2,1,0],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1], // 頭頂
+            [1,2,2,1,1,3,3,3,3,3,3,1,1,2,2,1], // 眉骨
+            [1,2,1,1,3,4,4,3,3,4,4,3,1,1,2,1], // 眼睛
+            [1,1,1,1,3,4,4,3,3,4,4,3,1,1,1,1],
+            [1,1,1,1,1,3,3,3,3,3,3,1,1,1,1,1], // 眼袋
+            [1,2,1,1,1,1,1,1,1,1,1,1,1,1,2,1], // 鼻子區域
+            [1,2,2,1,1,1,5,1,1,5,1,1,1,2,2,1], // 露牙
+            [1,1,1,1,1,5,5,5,5,5,5,1,1,1,1,1], // 大牙
+            [0,1,1,1,1,5,1,5,5,1,5,1,1,1,1,0], // 下牙
+            [0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0], // 下巴
+            [0,0,0,1,1,1,0,0,0,0,1,1,1,0,0,0], // 爪子
+            [0,0,0,1,1,0,0,0,0,0,0,1,1,0,0,0]
+        ];
+        // ==========================================
+
+
+        // --- 繪製背景函數 ---
         function drawBackground() {
             ctx.save();
             ctx.resetTransform(); 
-
             // 1. 天空
             let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
             skyGradient.addColorStop(0, "#5C94FC"); 
             skyGradient.addColorStop(1, "#87CEEB"); 
             ctx.fillStyle = skyGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // 2. 地板裝飾
+            // 2. 地板
             const groundY = 350;
-            // 土壤
-            ctx.fillStyle = '#8B4513'; 
-            ctx.fillRect(0, groundY + 5, canvas.width, 50);
-            
-            // 土壤細節點綴 (像素感)
+            ctx.fillStyle = '#8B4513'; ctx.fillRect(0, groundY + 5, canvas.width, 50);
             ctx.fillStyle = '#6d340c';
             for(let i=0; i<canvas.width; i+=20) {
                  if(i%3 === 0) ctx.fillRect(i, groundY + 15, 5, 5);
                  if(i%4 === 0) ctx.fillRect(i+10, groundY + 30, 5, 5);
             }
-
-            // 草地
-            ctx.fillStyle = '#228B22'; 
-            ctx.fillRect(0, groundY, canvas.width, 5);
-
-            // 邊緣線
+            ctx.fillStyle = '#228B22'; ctx.fillRect(0, groundY, canvas.width, 5);
             ctx.fillStyle = '#000';
             ctx.fillRect(0, groundY, canvas.width, 2); 
             ctx.fillRect(0, canvas.height - 2, canvas.width, 2); 
-
             // 3. 雲朵
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-            // 左雲
-            ctx.fillRect(100, 80, 80, 25);
-            ctx.fillRect(120, 60, 40, 20);
-            // 右雲
-            ctx.fillRect(550, 120, 90, 25);
-            ctx.fillRect(580, 100, 50, 20);
-            // 低雲
+            ctx.fillRect(100, 80, 80, 25); ctx.fillRect(120, 60, 40, 20);
+            ctx.fillRect(550, 120, 90, 25); ctx.fillRect(580, 100, 50, 20);
             ctx.fillRect(50, 200, 60, 20);
-
             ctx.restore();
         }
 
         // --- 關卡生成 ---
         function generateLevel(lvl) {
             platforms = []; enemies = []; boss = null; goal = null;
-            
-            // 物理地板 (透明)
+            // 物理地板
             platforms.push({x: -200, y: 350, w: 3000, h: 50, type: 'ground', visible: false});
 
             if (lvl < 6) {
@@ -236,7 +251,8 @@
                 platforms.push({x: 350, y: 150, w: 100, h: 20, type: 'plat', visible: true});
                 
                 boss = {
-                    x: 400, y: 250, w: 100, h: 100, vx: 3, vy: 0, hp: 10,
+                    // 調整 BOSS 碰撞箱大小以配合新素材
+                    x: 400, y: 250, w: 90, h: 80, vx: 3, vy: 0, hp: 10,
                     color: '#8B0000', active: true
                 };
             }
@@ -257,7 +273,6 @@
             }
         });
         window.addEventListener('keyup', e => keys[e.code] = false);
-        
         document.getElementById('playButton').addEventListener('click', () => {
              if (gameState !== 'PLAYING') resetGame();
         });
@@ -271,10 +286,7 @@
             player.x = 50; player.y = 200; player.vx = 0; player.vy = 0;
             generateLevel(level);
             gameState = 'PLAYING';
-            
-            let msg = `LEVEL ${level}`; 
-            let prompt = 'Press SPACE to Start';
-            
+            let msg = `LEVEL ${level}`; let prompt = 'Press SPACE to Start';
             if (level === 3) {
                 savedCheckpoint = Math.max(savedCheckpoint, 3);
                 msg += (savedCheckpoint === 3 && level===3) ? '\n★ CHECKPOINT SAVED ★' : '\n(CHECKPOINT LOADED)';
@@ -297,15 +309,11 @@
             const prompt = document.getElementById('startPrompt');
             const playBtn = document.getElementById('playButton');
 
-            title.innerText = titleText;
-            prompt.innerText = promptText;
-            
+            title.innerText = titleText; prompt.innerText = promptText;
             if (gameState === 'START') {
-                 playBtn.style.display = 'block';
-                 prompt.style.display = 'block';
+                 playBtn.style.display = 'block'; prompt.style.display = 'block';
             } else {
-                 playBtn.style.display = 'none';
-                 prompt.style.display = (promptText ? 'block' : 'none');
+                 playBtn.style.display = 'none'; prompt.style.display = (promptText ? 'block' : 'none');
             }
             msgDiv.style.display = 'flex';
             if (duration > 0) setTimeout(() => { if (gameState === 'PLAYING') msgDiv.style.display = 'none'; }, duration);
@@ -375,19 +383,14 @@
                 let msg = 'GAME OVER\nScore: ' + score;
                 if (savedCheckpoint > 1) msg += `\nCheckpoint: Level ${savedCheckpoint}`;
                 showMessage(msg, 'Press Space to Restart');
-                
-                if (score > highScore) { 
-                    highScore = score; 
-                    localStorage.setItem('catMarioHighScore', highScore); 
-                    document.getElementById('highScoreDisplay').innerText = highScore; 
-                }
+                if (score > highScore) { highScore = score; localStorage.setItem('catMarioHighScore', highScore); document.getElementById('highScoreDisplay').innerText = highScore; }
             }
         }
 
         function levelComplete() { score += 500; updateUI(); level++; startLevel(); }
 
         function draw() {
-            // 背景重繪 (覆蓋上一幀)
+            // 背景重繪
             drawBackground();
 
             ctx.save();
@@ -405,68 +408,89 @@
                 ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
             });
 
-            // 畫終點 (像素風格門)
+            // 畫終點 (像素門)
             if (goal) {
-                // 1. 門板
-                ctx.fillStyle = '#8B4513'; // 棕色木門
-                ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
-                // 2. 門框與紋理 (像素邊緣)
-                ctx.fillStyle = '#5c3317'; // 深棕色
-                ctx.fillRect(goal.x, goal.y, goal.w, 4); // 頂部
-                ctx.fillRect(goal.x, goal.y, 4, goal.h); // 左側
-                ctx.fillRect(goal.x + goal.w - 4, goal.y, 4, goal.h); // 右側
-                ctx.fillRect(goal.x + 10, goal.y + 10, goal.w - 20, 4); // 門板上方紋理
-                ctx.fillRect(goal.x + 10, goal.y + goal.h - 15, goal.w - 20, 4); // 門板下方紋理
-                // 3. 門把 (像素點)
-                ctx.fillStyle = '#DAA520'; // 金色門把
-                ctx.fillRect(goal.x + goal.w - 12, goal.y + goal.h / 2 - 4, 8, 8);
-                // 4. 整體黑色邊框
-                ctx.lineWidth = 2; 
-                ctx.strokeStyle = '#000'; 
-                ctx.strokeRect(goal.x, goal.y, goal.w, goal.h);
-
-                // 5. 文字對齊修正
-                ctx.fillStyle = '#000'; 
-                ctx.font = '16px "Press Start 2P"';
-                ctx.textAlign = 'center'; // 文字水平置中
-                ctx.fillText('GOAL', goal.x + goal.w / 2, goal.y - 10); // x 座標移到門的中心
-                ctx.textAlign = 'start'; // 恢復預設對齊，以免影響其他繪圖
+                ctx.fillStyle = '#8B4513'; ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
+                ctx.fillStyle = '#5c3317';
+                ctx.fillRect(goal.x, goal.y, goal.w, 4); ctx.fillRect(goal.x, goal.y, 4, goal.h);
+                ctx.fillRect(goal.x + goal.w - 4, goal.y, 4, goal.h);
+                ctx.fillRect(goal.x + 10, goal.y + 10, goal.w - 20, 4);
+                ctx.fillRect(goal.x + 10, goal.y + goal.h - 15, goal.w - 20, 4);
+                ctx.fillStyle = '#DAA520'; ctx.fillRect(goal.x + goal.w - 12, goal.y + goal.h / 2 - 4, 8, 8);
+                ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.strokeRect(goal.x, goal.y, goal.w, goal.h);
+                ctx.fillStyle = '#000'; ctx.font = '16px "Press Start 2P"';
+                ctx.textAlign = 'center'; ctx.fillText('GOAL', goal.x + goal.w / 2, goal.y - 10); ctx.textAlign = 'start';
             }
 
-            // 畫敵人
+            // ==========================================
+            // --- 【修改】角色繪製區 (使用像素圖) ---
+            // ==========================================
+
+            // 畫敵人 (可愛圓潤版)
             enemies.forEach(e => {
                 if(e.y < 500) {
-                    ctx.fillStyle = '#555'; ctx.fillRect(e.x, e.y, e.w, e.h);
-                    ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.strokeRect(e.x, e.y, e.w, e.h);
-                    ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + 5, e.y - 10); ctx.lineTo(e.x + 10, e.y);
-                    ctx.moveTo(e.x + e.w - 10, e.y); ctx.lineTo(e.x + e.w - 5, e.y - 10); ctx.lineTo(e.x + e.w, e.y);
-                    ctx.fill(); ctx.stroke();
-                    ctx.fillStyle = '#FF0000'; let faceOffset = (e.vx > 0) ? 8 : 0;
-                    ctx.fillRect(e.x + 4 + faceOffset, e.y + 8, 4, 4); ctx.fillRect(e.x + 18 + faceOffset, e.y + 8, 4, 4);
+                    // 繪製碰撞箱(除錯用，可註解掉)
+                    // ctx.strokeStyle = 'red'; ctx.lineWidth = 1; ctx.strokeRect(e.x, e.y, e.w, e.h);
+
+                    // 定義敵人的顏色盤 (深灰身體, 紅眼, 深灰嘴)
+                    const enemyPalette = {
+                        1: '#555555', // 身體
+                        2: '#FF0000', // 眼睛
+                        3: '#333333'  // 嘴巴
+                    };
+                    // 使用 CUTE_CAT_SPRITE，像素大小為 3
+                    // 將 sprite 稍微置中於碰撞箱
+                    drawSprite(ctx, CUTE_CAT_SPRITE, e.x + 2, e.y - 2, 3, enemyPalette);
                 }
             });
 
-            // 畫 BOSS
+            // 畫 BOSS (恐怖像素版)
             if (boss && boss.active) {
-                ctx.fillStyle = boss.color;
-                ctx.beginPath(); ctx.moveTo(boss.x, boss.y); ctx.lineTo(boss.x + 20, boss.y - 30); ctx.lineTo(boss.x + 40, boss.y);
-                ctx.moveTo(boss.x + boss.w - 40, boss.y); ctx.lineTo(boss.x + boss.w - 20, boss.y - 30); ctx.lineTo(boss.x + boss.w, boss.y);
-                ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
-                ctx.fillRect(boss.x, boss.y, boss.w, boss.h); ctx.strokeRect(boss.x, boss.y, boss.w, boss.h);
-                ctx.fillStyle = '#fff'; ctx.fillRect(boss.x + 20, boss.y + 20, 20, 20); ctx.fillRect(boss.x + 60, boss.y + 20, 20, 20);
+                // 繪製碰撞箱(除錯用)
+                // ctx.strokeStyle = 'red'; ctx.lineWidth = 2; ctx.strokeRect(boss.x, boss.y, boss.w, boss.h);
+
+                // 定義 BOSS 的顏色盤
+                let bossPalette;
+                if (boss.color === '#ff5555') {
+                    // 受傷時的顏色盤 (整隻變亮紅)
+                    bossPalette = { 1:'#ff5555', 2:'#ff7777', 3:'#ffffff', 4:'#ff0000', 5:'#ffffff' };
+                } else {
+                    // 正常時的顏色盤 (深紅, 亮紅, 白眼, 紅瞳, 白牙)
+                    bossPalette = { 1:'#8B0000', 2:'#DC143C', 3:'#FFFFFF', 4:'#FF0000', 5:'#F0F0F0' };
+                }
+                // 使用 SCARY_BOSS_SPRITE，像素大小為 6 (比較大隻)
+                drawSprite(ctx, SCARY_BOSS_SPRITE, boss.x - 4, boss.y - 10, 6, bossPalette);
+
+                // BOSS 血條
                 ctx.fillStyle = '#000'; ctx.fillRect(boss.x, boss.y - 24, 104, 14);
                 ctx.fillStyle = 'red'; ctx.fillRect(boss.x + 2, boss.y - 22, 100, 10);
                 ctx.fillStyle = '#228B22'; ctx.fillRect(boss.x + 2, boss.y - 22, 100 * (boss.hp / 10), 10);
             }
 
-            // 畫玩家
-            const p = player; const x = p.x; const y = p.y; const w = p.w; const h = p.h;
-            ctx.fillStyle = p.color; ctx.fillRect(x, y, w, h);
-            ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
-            ctx.fillStyle = p.color; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 5, y - 8); ctx.lineTo(x + 10, y);
-            ctx.moveTo(x + w, y); ctx.lineTo(x + w - 5, y - 8); ctx.lineTo(x + w - 10, y); ctx.fill(); ctx.stroke();
-            ctx.fillStyle = '#000000'; let eyeOffset = p.facingRight ? 4 : 0;
-            ctx.fillRect(x + 6 + eyeOffset, y + 10, 3, 3); ctx.fillRect(x + w - 9 + eyeOffset, y + 10, 3, 3);
+            // 畫玩家 (可愛圓潤白貓)
+            const p = player;
+            // 繪製碰撞箱(除錯用)
+            // ctx.strokeStyle = 'blue'; ctx.lineWidth = 1; ctx.strokeRect(p.x, p.y, p.w, p.h);
+
+            // 定義玩家的顏色盤 (白身體, 黑眼, 粉嘴)
+            const playerPalette = {
+                1: '#FFFFFF', // 身體
+                2: '#000000', // 眼睛
+                3: '#FFC0CB'  // 鼻子/嘴巴
+            };
+
+            ctx.save();
+            // 簡單的左右轉向處理 (透過 scaleX 翻轉)
+            if (!p.facingRight) {
+                ctx.translate(p.x + p.w/2, p.y + p.h/2);
+                ctx.scale(-1, 1);
+                ctx.translate(-(p.x + p.w/2), -(p.y + p.h/2));
+            }
+            // 使用 CUTE_CAT_SPRITE，像素大小為 3
+            drawSprite(ctx, CUTE_CAT_SPRITE, p.x - 2, p.y - 2, 3, playerPalette);
+            ctx.restore();
+
+            // ==========================================
 
             ctx.restore(); 
             requestAnimationFrame(draw);
