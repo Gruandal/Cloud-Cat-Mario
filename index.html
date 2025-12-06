@@ -87,4 +87,349 @@
         #playButton:hover {
              transform: scale(1.1); /* 滑鼠移上去放大一點 */
         }
-        #playButton:
+        #playButton:active {
+             transform: scale(0.9); /* 按下去縮小一點 */
+             filter: drop-shadow(2px 2px 0 #000);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="gameContainer">
+        <div class="ui">
+            <div>Level: <span id="levelDisplay">1</span></div>
+            <div>Lives: <span id="livesDisplay">❤️❤️❤️</span></div>
+        </div>
+        <div class="hud-right">
+            <div>Score: <span id="scoreDisplay">0</span></div>
+            <div style="font-size: 10px; color: #ffd700;">High Score: <span id="highScoreDisplay">0</span></div>
+        </div>
+        <div id="message">
+            <div id="msgTitle">LEVEL 1</div>
+            <div id="startPrompt">Press space to start!</div>
+            <div id="playButton"></div>
+        </div>
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+    </div>
+
+    <script>
+        // --- JavaScript 邏輯區 ---
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // 遊戲狀態
+        let gameState = 'START'; 
+        let level = 1;
+        let savedCheckpoint = 1; 
+        let lives = 3;
+        let score = 0;
+        let highScore = localStorage.getItem('catMarioHighScore') || 0;
+        document.getElementById('highScoreDisplay').innerText = highScore;
+
+        // 物理設定
+        const GRAVITY = 0.5;
+        const JUMP_FORCE = -14;
+        const SPEED = 5;
+
+        // 玩家設定
+        const player = {
+            x: 50, y: 300, w: 24, h: 32, vx: 0, vy: 0,
+            color: '#FFFFFF', grounded: false, facingRight: true 
+        };
+
+        let platforms = [];
+        let enemies = [];
+        let goal = null; 
+        let boss = null;
+
+        // --- 【新增】繪製背景函數 ---
+        // 這個函數會直接用程式碼畫出像素風格的天空和地板
+        function drawBackground() {
+            ctx.save();
+            ctx.resetTransform(); // 確保背景不受攝影機移動影響，永遠固定在畫面上
+
+            // 1. 畫天空 (線性漸層)
+            let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            skyGradient.addColorStop(0, "#5C94FC"); // 頂部深藍
+            skyGradient.addColorStop(1, "#AED6F1"); // 底部淺藍
+            ctx.fillStyle = skyGradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // 2. 畫底部的固定地板 (裝飾用，非物理平台)
+            const groundHeight = 50;
+            const groundY = canvas.height - groundHeight;
+
+            // 土壤層
+            ctx.fillStyle = '#8B4513'; // 深褐色
+            ctx.fillRect(0, groundY + 5, canvas.width, groundHeight - 5);
+            
+            // 草地層
+            ctx.fillStyle = '#228B22'; // 森林綠
+            ctx.fillRect(0, groundY, canvas.width, 5);
+
+            // 像素邊緣線
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, groundY, canvas.width, 2); // 草地黑邊
+            ctx.fillRect(0, canvas.height - 2, canvas.width, 2); // 畫面最底部黑邊
+
+            // 3. 畫一些簡單的像素雲朵 (裝飾用)
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+            // 雲朵 1
+            ctx.fillRect(100, 80, 60, 20);
+            ctx.fillRect(120, 60, 40, 20);
+            // 雲朵 2
+            ctx.fillRect(500, 120, 80, 25);
+            ctx.fillRect(530, 100, 50, 20);
+
+            ctx.restore();
+        }
+
+        // --- 關卡生成 ---
+        function generateLevel(lvl) {
+            platforms = []; enemies = []; boss = null; goal = null;
+            
+            // 物理地板 (透明的，因為我們已經畫了背景地板)
+            // 但為了物理碰撞偵測，還是需要這個物件
+            platforms.push({x: -200, y: 350, w: 3000, h: 50, type: 'ground', visible: false});
+
+            if (lvl < 6) {
+                let currentX = 200;
+                for(let i=0; i<5 + lvl; i++) {
+                    let gap = 100 + Math.random() * 50;
+                    let height = 250 - Math.random() * 100;
+                    let width = 100 + Math.random() * 100;
+                    platforms.push({x: currentX, y: height, w: width, h: 20, type: 'plat', visible: true});
+                    
+                    if (lvl > 1 && Math.random() > 0.3) {
+                        enemies.push({
+                            x: currentX + 20, y: height - 30, w: 30, h: 30, 
+                            vx: 2 + (lvl * 0.2), patrolStart: currentX, patrolEnd: currentX + width - 30,
+                            type: 'dog'
+                        });
+                    }
+                    currentX += width + gap;
+                }
+                goal = {x: currentX, y: 300, w: 40, h: 50};
+            }
+
+            if (lvl === 6) {
+                // BOSS 關卡地板
+                platforms.push({x: -200, y: 350, w: 1200, h: 50, type: 'ground', visible: false});
+                platforms.push({x: 50, y: 250, w: 100, h: 20, type: 'plat', visible: true});
+                platforms.push({x: 650, y: 250, w: 100, h: 20, type: 'plat', visible: true});
+                platforms.push({x: 350, y: 150, w: 100, h: 20, type: 'plat', visible: true});
+                
+                boss = {
+                    x: 400, y: 250, w: 100, h: 100, vx: 3, vy: 0, hp: 10,
+                    color: '#8B0000', active: true
+                };
+            }
+        }
+
+        // --- 輸入控制 ---
+        const keys = {};
+        window.addEventListener('keydown', e => {
+            keys[e.code] = true;
+            if(e.code === 'Space') e.preventDefault(); 
+            if (e.code === 'Space' || e.code === 'KeyW') {
+                if (gameState === 'START' || gameState === 'GAME_OVER' || gameState === 'WIN') {
+                    resetGame();
+                } else if (gameState === 'PLAYING' && player.grounded) {
+                    player.vy = JUMP_FORCE;
+                    player.grounded = false;
+                }
+            }
+        });
+        window.addEventListener('keyup', e => keys[e.code] = false);
+        document.getElementById('playButton').addEventListener('click', () => {
+             if (gameState !== 'PLAYING') resetGame();
+        });
+
+        function resetGame() {
+            level = savedCheckpoint; lives = 3; score = 0;
+            updateUI(); startLevel();
+        }
+
+        function startLevel() {
+            player.x = 50; player.y = 200; player.vx = 0; player.vy = 0;
+            generateLevel(level);
+            gameState = 'PLAYING';
+            let msg = `LEVEL ${level}`; let prompt = 'Press SPACE to Start';
+            if (level === 3) {
+                savedCheckpoint = Math.max(savedCheckpoint, 3);
+                msg += (savedCheckpoint === 3 && level===3) ? '\n★ CHECKPOINT SAVED ★' : '\n(CHECKPOINT LOADED)';
+            } else if (level === 6) {
+                savedCheckpoint = 6;
+                msg += '\n★ BOSS CHECKPOINT ★';
+            }
+            showMessage(msg, prompt, 2000);
+        }
+
+        function updateUI() {
+            document.getElementById('levelDisplay').innerText = level;
+            document.getElementById('livesDisplay').innerText = '❤️'.repeat(lives);
+            document.getElementById('scoreDisplay').innerText = score;
+        }
+
+        function showMessage(titleText, promptText, duration = 0) {
+            const msgDiv = document.getElementById('message');
+            const title = document.getElementById('msgTitle');
+            const prompt = document.getElementById('startPrompt');
+            const playBtn = document.getElementById('playButton');
+
+            title.innerText = titleText;
+            prompt.innerText = promptText;
+            
+            if (gameState === 'START') {
+                 playBtn.style.display = 'block';
+                 prompt.style.display = 'block';
+            } else {
+                 playBtn.style.display = 'none';
+                 prompt.style.display = (promptText ? 'block' : 'none');
+            }
+            msgDiv.style.display = 'flex';
+            if (duration > 0) setTimeout(() => { if (gameState === 'PLAYING') msgDiv.style.display = 'none'; }, duration);
+        }
+
+        function checkRectCollision(r1, r2) {
+            if (!r1 || !r2) return false;
+            return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
+        }
+
+        function update() {
+            if (gameState !== 'PLAYING') return;
+            if (keys['ArrowLeft'] || keys['KeyA']) { player.vx = -SPEED; player.facingRight = false; }
+            else if (keys['ArrowRight'] || keys['KeyD']) { player.vx = SPEED; player.facingRight = true; }
+            else { player.vx = 0; }
+
+            player.vy += GRAVITY; player.x += player.vx;
+            platforms.forEach(p => {
+                if (checkRectCollision(player, p)) {
+                    if (player.vx > 0) player.x = p.x - player.w;
+                    else if (player.vx < 0) player.x = p.x + p.w;
+                }
+            });
+
+            player.y += player.vy; player.grounded = false;
+            platforms.forEach(p => {
+                if (checkRectCollision(player, p)) {
+                    if (player.vy > 0) { player.y = p.y - player.h; player.grounded = true; player.vy = 0; }
+                    else if (player.vy < 0) { player.y = p.y + p.h; player.vy = 0; }
+                }
+            });
+
+            if (player.y > canvas.height) playerDie();
+            if (goal && checkRectCollision(player, goal)) levelComplete();
+
+            enemies.forEach(enemy => {
+                enemy.x += enemy.vx;
+                if (enemy.x > enemy.patrolEnd || enemy.x < enemy.patrolStart) enemy.vx *= -1;
+                if (checkRectCollision(player, enemy)) {
+                    if (player.vy > 0 && player.y + player.h - 10 < enemy.y + enemy.h/2) {
+                        enemy.y = 1000; player.vy = -5; score += 100; updateUI();
+                    } else { playerDie(); }
+                }
+            });
+
+            if (boss && boss.active) {
+                boss.x += boss.vx;
+                if (boss.x < 0 || boss.x > 700) boss.vx *= -1;
+                if (checkRectCollision(player, boss)) {
+                    if (player.vy > 0 && player.y + player.h - 15 < boss.y + boss.h/2) {
+                        boss.hp--; player.vy = -8; boss.color = '#ff5555';
+                        setTimeout(() => boss.color = '#8B0000', 200);
+                        if (boss.hp <= 0) {
+                            boss.active = false; score += 5000; gameState = 'WIN'; savedCheckpoint = 1;
+                            showMessage('YOU WIN!\nCat Hero!', 'Press Space to Restart', 0);
+                        }
+                    } else { playerDie(); }
+                }
+            }
+        }
+
+        function playerDie() {
+            lives--; updateUI();
+            if (lives > 0) { player.x = 50; player.y = 200; player.vy = 0; }
+            else {
+                gameState = 'GAME_OVER';
+                let msg = 'GAME OVER\nScore: ' + score;
+                if (savedCheckpoint > 1) msg += `\nCheckpoint: Level ${savedCheckpoint}`;
+                showMessage(msg, 'Press Space to Restart');
+                if (score > highScore) { highScore = score; localStorage.setItem('catMarioHighScore', highScore); document.getElementById('highScoreDisplay').innerText = highScore; }
+            }
+        }
+
+        function levelComplete() { score += 500; updateUI(); level++; startLevel(); }
+
+        function draw() {
+            // 【修改點】不再使用 clearRect，而是直接畫背景覆蓋
+            // 先畫背景 (天空、雲、底部土壤)
+            drawBackground();
+
+            ctx.save();
+            let camX = 0;
+            if (level !== 6) camX = Math.max(0, player.x - 200);
+            ctx.translate(-camX, 0);
+
+            // 畫平台 (像素風格)
+            platforms.forEach(p => {
+                if (!p.visible) return; // 如果是隱形地板就不畫
+                // 土壤部分
+                ctx.fillStyle = '#8B4513'; ctx.fillRect(p.x, p.y + 5, p.w, p.h - 5);
+                // 草地部分
+                ctx.fillStyle = '#228B22'; ctx.fillRect(p.x, p.y, p.w, 5);
+                // 像素邊緣
+                ctx.fillStyle = '#000';
+                ctx.fillRect(p.x, p.y, p.w, 2); ctx.fillRect(p.x, p.y + p.h - 2, p.w, 2);
+                ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
+            });
+
+            if (goal) {
+                ctx.fillStyle = '#FFD700'; ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
+                ctx.fillStyle = '#000'; ctx.font = '16px "Press Start 2P"'; ctx.fillText('GOAL', goal.x, goal.y - 10);
+                ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.strokeRect(goal.x, goal.y, goal.w, goal.h);
+            }
+
+            enemies.forEach(e => {
+                if(e.y < 500) {
+                    ctx.fillStyle = '#555'; ctx.fillRect(e.x, e.y, e.w, e.h);
+                    ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.strokeRect(e.x, e.y, e.w, e.h);
+                    ctx.beginPath(); ctx.moveTo(e.x, e.y); ctx.lineTo(e.x + 5, e.y - 10); ctx.lineTo(e.x + 10, e.y);
+                    ctx.moveTo(e.x + e.w - 10, e.y); ctx.lineTo(e.x + e.w - 5, e.y - 10); ctx.lineTo(e.x + e.w, e.y);
+                    ctx.fill(); ctx.stroke();
+                    ctx.fillStyle = '#FF0000'; let faceOffset = (e.vx > 0) ? 8 : 0;
+                    ctx.fillRect(e.x + 4 + faceOffset, e.y + 8, 4, 4); ctx.fillRect(e.x + 18 + faceOffset, e.y + 8, 4, 4);
+                }
+            });
+
+           if (boss && boss.active) {
+                ctx.fillStyle = boss.color;
+                ctx.beginPath(); ctx.moveTo(boss.x, boss.y); ctx.lineTo(boss.x + 20, boss.y - 30); ctx.lineTo(boss.x + 40, boss.y);
+                ctx.moveTo(boss.x + boss.w - 40, boss.y); ctx.lineTo(boss.x + boss.w - 20, boss.y - 30); ctx.lineTo(boss.x + boss.w, boss.y);
+                ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.stroke();
+                ctx.fillRect(boss.x, boss.y, boss.w, boss.h); ctx.strokeRect(boss.x, boss.y, boss.w, boss.h);
+                ctx.fillStyle = '#fff'; ctx.fillRect(boss.x + 20, boss.y + 20, 20, 20); ctx.fillRect(boss.x + 60, boss.y + 20, 20, 20);
+                ctx.fillStyle = '#000'; ctx.fillRect(boss.x, boss.y - 24, 104, 14);
+                ctx.fillStyle = 'red'; ctx.fillRect(boss.x + 2, boss.y - 22, 100, 10);
+                ctx.fillStyle = '#228B22'; ctx.fillRect(boss.x + 2, boss.y - 22, 100 * (boss.hp / 10), 10);
+            }
+
+            const p = player; const x = p.x; const y = p.y; const w = p.w; const h = p.h;
+            ctx.fillStyle = p.color; ctx.fillRect(x, y, w, h);
+            ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
+            ctx.fillStyle = p.color; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + 5, y - 8); ctx.lineTo(x + 10, y);
+            ctx.moveTo(x + w, y); ctx.lineTo(x + w - 5, y - 8); ctx.lineTo(x + w - 10, y); ctx.fill(); ctx.stroke();
+            ctx.fillStyle = '#000000'; let eyeOffset = p.facingRight ? 4 : 0;
+            ctx.fillRect(x + 6 + eyeOffset, y + 10, 3, 3); ctx.fillRect(x + w - 9 + eyeOffset, y + 10, 3, 3);
+
+            ctx.restore(); 
+            requestAnimationFrame(draw);
+        }
+
+        showMessage('LEVEL 1', 'Press space to start!', 0);
+        setInterval(update, 1000/60);
+        draw();
+    </script>
+</body>
+</html>
