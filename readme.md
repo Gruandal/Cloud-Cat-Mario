@@ -59,5 +59,3 @@
     * **AABB (Axis-Aligned Bounding Box)**：用於矩形平台與地面檢測。
     * **圓形碰撞 (Circle Collision)**：用於貓咪球與敵人/金幣/BOSS 之間的互動。
 * **狀態機**：管理 `HOW_TO_PLAY`, `START`, `PLAYING`, `GAME_OVER`, `WIN` 等遊戲狀態。
-
-## 📂 檔案結構
