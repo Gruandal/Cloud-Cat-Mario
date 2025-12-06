@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Final UI Centered</title>
+    <title>Cat Mario | Final Perfect UI</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 (維持不變) --- */
@@ -48,7 +48,6 @@
             position: absolute; top: 48%; left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
-            /* display: flex; 在 JS 中控制 */
             flex-direction: column;
             align-items: center; gap: 30px;
             z-index: 30; width: 100%;
@@ -437,10 +436,4 @@
                 e.rotation += e.vx / e.r; 
 
                 let dx = (player.x + player.radius) - (e.x + e.r); 
-                let dy = (player.y + player.radius) - (e.y + e.r); 
-                let dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < player.radius + e.r) {
-                    if (player.vy > 0 && player.y + player.radius < e.y) { e.y = 1000; player.vy = -8; score += 100; updateUI(); } 
-                    else { playerDie(); }
-                }
-            });
+                let dy = (player.y + player.radius) -
