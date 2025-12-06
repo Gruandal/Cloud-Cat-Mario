@@ -9,86 +9,94 @@
         /* --- CSS 樣式區 --- */
         body {
             margin: 0;
-            background: #222; /* 移除外部圖片，改用深色背景打底，以防萬一 */
+            background: #222; 
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             color: #fff;
-            font-family: 'Press Start 2P', cursive; /* 應用像素風格字體 */
+            font-family: 'Press Start 2P', cursive;
             overflow: hidden;
-            user-select: none; /* 防止連點選取文字 */
+            user-select: none;
         }
         #gameContainer {
             position: relative;
             box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
-            border: 4px solid #000; /* 增加一個像素風格外框 */
+            border: 4px solid #000;
         }
         canvas {
-            background: #5C94FC; /* 預設天空藍，如果JS還沒載入時顯示 */
+            background: #5C94FC; 
             display: block;
         }
-        /* --- UI 介面調整 --- */
+        
+        /* --- UI 介面 --- */
         .ui {
             position: absolute;
-            top: 15px; /* 稍微往下移一點 */
-            left: 15px;
-            font-size: 14px; /* 稍微調整字體大小以配合寬行距 */
-            text-shadow: 2px 2px 0 #000;
+            top: 20px;
+            left: 20px;
+            font-size: 14px;
+            text-shadow: 3px 3px 0 #000;
             pointer-events: none;
-            line-height: 2.2; /* 【修改點】增加行距寬度 */
+            line-height: 2.5; /* 左上角資訊行距 */
         }
         .hud-right {
             position: absolute;
-            top: 15px;
-            right: 15px;
+            top: 20px;
+            right: 20px;
             text-align: right;
             pointer-events: none;
-            text-shadow: 2px 2px 0 #000;
+            text-shadow: 3px 3px 0 #000;
             font-size: 14px;
-            line-height: 2.2; /* 【修改點】增加行距寬度 */
+            line-height: 2.5; /* 右上角資訊行距 */
         }
-        /* --- 訊息與按鈕區域 --- */
+
+        /* --- 訊息與按鈕區域 (修正重點) --- */
         #message {
             position: absolute;
-            top: 45%; /* 稍微往上調，讓出空間給按鈕 */
+            top: 48%; /* 稍微置中偏上 */
             left: 50%;
             transform: translate(-50%, -50%);
             text-align: center;
             display: flex; 
             flex-direction: column;
             align-items: center;
-            gap: 25px; /* 增加元素間距 */
+            gap: 30px; /* 標題、副標、按鈕之間的距離 */
             z-index: 10; 
+            width: 100%; /* 確保寬度足夠文字伸展 */
         }
         #msgTitle {
-            font-size: 36px; 
+            font-size: 32px; 
             font-weight: bold;
             text-shadow: 4px 4px 0 #000;
             margin: 0; 
-            margin-bottom: 10px;
+            
+            /* --- 這裡修正了多行文字擁擠的問題 --- */
+            white-space: pre-wrap; /* 讓 \n 換行生效 */
+            line-height: 1.8;      /* 設定大標題的行高，讓文字分開一點 */
         }
         #startPrompt {
             font-size: 16px;
             text-shadow: 2px 2px 0 #000;
             margin: 0;
+            line-height: 1.5;
         }
+
         /* --- 像素三角形播放鍵 --- */
         #playButton {
             width: 0;
             height: 0;
             border-top: 25px solid transparent;
             border-bottom: 25px solid transparent;
-            border-left: 40px solid #fff; /* 像素風格白色三角形 */
+            border-left: 40px solid #fff; /* 純白色三角形 */
             cursor: pointer;
-            filter: drop-shadow(4px 4px 0 #000); /* 像素風格陰影 */
+            filter: drop-shadow(4px 4px 0 #000); 
             transition: transform 0.1s;
         }
         #playButton:hover {
-             transform: scale(1.1); /* 滑鼠移上去放大一點 */
+             transform: scale(1.1); 
         }
         #playButton:active {
-             transform: scale(0.9); /* 按下去縮小一點 */
+             transform: scale(0.9);
              filter: drop-shadow(2px 2px 0 #000);
         }
     </style>
@@ -104,11 +112,13 @@
             <div>Score: <span id="scoreDisplay">0</span></div>
             <div style="font-size: 10px; color: #ffd700;">High Score: <span id="highScoreDisplay">0</span></div>
         </div>
+        
         <div id="message">
             <div id="msgTitle">LEVEL 1</div>
             <div id="startPrompt">Press space to start!</div>
             <div id="playButton"></div>
         </div>
+        
         <canvas id="gameCanvas" width="800" height="400"></canvas>
     </div>
 
@@ -143,44 +153,50 @@
         let goal = null; 
         let boss = null;
 
-        // --- 【新增】繪製背景函數 ---
-        // 這個函數會直接用程式碼畫出像素風格的天空和地板
+        // --- 繪製背景函數 (程式碼繪圖，不需圖片) ---
         function drawBackground() {
             ctx.save();
-            ctx.resetTransform(); // 確保背景不受攝影機移動影響，永遠固定在畫面上
+            ctx.resetTransform(); 
 
-            // 1. 畫天空 (線性漸層)
+            // 1. 天空
             let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
-            skyGradient.addColorStop(0, "#5C94FC"); // 頂部深藍
-            skyGradient.addColorStop(1, "#AED6F1"); // 底部淺藍
+            skyGradient.addColorStop(0, "#5C94FC"); 
+            skyGradient.addColorStop(1, "#87CEEB"); 
             ctx.fillStyle = skyGradient;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            // 2. 畫底部的固定地板 (裝飾用，非物理平台)
-            const groundHeight = 50;
-            const groundY = canvas.height - groundHeight;
-
-            // 土壤層
-            ctx.fillStyle = '#8B4513'; // 深褐色
-            ctx.fillRect(0, groundY + 5, canvas.width, groundHeight - 5);
+            // 2. 地板裝飾
+            const groundY = 350;
+            // 土壤
+            ctx.fillStyle = '#8B4513'; 
+            ctx.fillRect(0, groundY + 5, canvas.width, 50);
             
-            // 草地層
-            ctx.fillStyle = '#228B22'; // 森林綠
+            // 土壤細節點綴 (像素感)
+            ctx.fillStyle = '#6d340c';
+            for(let i=0; i<canvas.width; i+=20) {
+                 if(i%3 === 0) ctx.fillRect(i, groundY + 15, 5, 5);
+                 if(i%4 === 0) ctx.fillRect(i+10, groundY + 30, 5, 5);
+            }
+
+            // 草地
+            ctx.fillStyle = '#228B22'; 
             ctx.fillRect(0, groundY, canvas.width, 5);
 
-            // 像素邊緣線
+            // 邊緣線
             ctx.fillStyle = '#000';
-            ctx.fillRect(0, groundY, canvas.width, 2); // 草地黑邊
-            ctx.fillRect(0, canvas.height - 2, canvas.width, 2); // 畫面最底部黑邊
+            ctx.fillRect(0, groundY, canvas.width, 2); 
+            ctx.fillRect(0, canvas.height - 2, canvas.width, 2); 
 
-            // 3. 畫一些簡單的像素雲朵 (裝飾用)
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-            // 雲朵 1
-            ctx.fillRect(100, 80, 60, 20);
+            // 3. 雲朵
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            // 左雲
+            ctx.fillRect(100, 80, 80, 25);
             ctx.fillRect(120, 60, 40, 20);
-            // 雲朵 2
-            ctx.fillRect(500, 120, 80, 25);
-            ctx.fillRect(530, 100, 50, 20);
+            // 右雲
+            ctx.fillRect(550, 120, 90, 25);
+            ctx.fillRect(580, 100, 50, 20);
+            // 低雲
+            ctx.fillRect(50, 200, 60, 20);
 
             ctx.restore();
         }
@@ -189,8 +205,7 @@
         function generateLevel(lvl) {
             platforms = []; enemies = []; boss = null; goal = null;
             
-            // 物理地板 (透明的，因為我們已經畫了背景地板)
-            // 但為了物理碰撞偵測，還是需要這個物件
+            // 物理地板 (透明)
             platforms.push({x: -200, y: 350, w: 3000, h: 50, type: 'ground', visible: false});
 
             if (lvl < 6) {
@@ -214,7 +229,7 @@
             }
 
             if (lvl === 6) {
-                // BOSS 關卡地板
+                // BOSS 關卡
                 platforms.push({x: -200, y: 350, w: 1200, h: 50, type: 'ground', visible: false});
                 platforms.push({x: 50, y: 250, w: 100, h: 20, type: 'plat', visible: true});
                 platforms.push({x: 650, y: 250, w: 100, h: 20, type: 'plat', visible: true});
@@ -242,6 +257,7 @@
             }
         });
         window.addEventListener('keyup', e => keys[e.code] = false);
+        
         document.getElementById('playButton').addEventListener('click', () => {
              if (gameState !== 'PLAYING') resetGame();
         });
@@ -255,7 +271,10 @@
             player.x = 50; player.y = 200; player.vx = 0; player.vy = 0;
             generateLevel(level);
             gameState = 'PLAYING';
-            let msg = `LEVEL ${level}`; let prompt = 'Press SPACE to Start';
+            
+            let msg = `LEVEL ${level}`; 
+            let prompt = 'Press SPACE to Start';
+            
             if (level === 3) {
                 savedCheckpoint = Math.max(savedCheckpoint, 3);
                 msg += (savedCheckpoint === 3 && level===3) ? '\n★ CHECKPOINT SAVED ★' : '\n(CHECKPOINT LOADED)';
@@ -356,15 +375,19 @@
                 let msg = 'GAME OVER\nScore: ' + score;
                 if (savedCheckpoint > 1) msg += `\nCheckpoint: Level ${savedCheckpoint}`;
                 showMessage(msg, 'Press Space to Restart');
-                if (score > highScore) { highScore = score; localStorage.setItem('catMarioHighScore', highScore); document.getElementById('highScoreDisplay').innerText = highScore; }
+                
+                if (score > highScore) { 
+                    highScore = score; 
+                    localStorage.setItem('catMarioHighScore', highScore); 
+                    document.getElementById('highScoreDisplay').innerText = highScore; 
+                }
             }
         }
 
         function levelComplete() { score += 500; updateUI(); level++; startLevel(); }
 
         function draw() {
-            // 【修改點】不再使用 clearRect，而是直接畫背景覆蓋
-            // 先畫背景 (天空、雲、底部土壤)
+            // 背景重繪 (覆蓋上一幀)
             drawBackground();
 
             ctx.save();
@@ -372,25 +395,24 @@
             if (level !== 6) camX = Math.max(0, player.x - 200);
             ctx.translate(-camX, 0);
 
-            // 畫平台 (像素風格)
+            // 畫平台
             platforms.forEach(p => {
-                if (!p.visible) return; // 如果是隱形地板就不畫
-                // 土壤部分
+                if (!p.visible) return;
                 ctx.fillStyle = '#8B4513'; ctx.fillRect(p.x, p.y + 5, p.w, p.h - 5);
-                // 草地部分
                 ctx.fillStyle = '#228B22'; ctx.fillRect(p.x, p.y, p.w, 5);
-                // 像素邊緣
                 ctx.fillStyle = '#000';
                 ctx.fillRect(p.x, p.y, p.w, 2); ctx.fillRect(p.x, p.y + p.h - 2, p.w, 2);
                 ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
             });
 
+            // 畫終點
             if (goal) {
                 ctx.fillStyle = '#FFD700'; ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
                 ctx.fillStyle = '#000'; ctx.font = '16px "Press Start 2P"'; ctx.fillText('GOAL', goal.x, goal.y - 10);
                 ctx.lineWidth = 2; ctx.strokeStyle = '#000'; ctx.strokeRect(goal.x, goal.y, goal.w, goal.h);
             }
 
+            // 畫敵人
             enemies.forEach(e => {
                 if(e.y < 500) {
                     ctx.fillStyle = '#555'; ctx.fillRect(e.x, e.y, e.w, e.h);
@@ -403,7 +425,8 @@
                 }
             });
 
-           if (boss && boss.active) {
+            // 畫 BOSS
+            if (boss && boss.active) {
                 ctx.fillStyle = boss.color;
                 ctx.beginPath(); ctx.moveTo(boss.x, boss.y); ctx.lineTo(boss.x + 20, boss.y - 30); ctx.lineTo(boss.x + 40, boss.y);
                 ctx.moveTo(boss.x + boss.w - 40, boss.y); ctx.lineTo(boss.x + boss.w - 20, boss.y - 30); ctx.lineTo(boss.x + boss.w, boss.y);
@@ -415,6 +438,7 @@
                 ctx.fillStyle = '#228B22'; ctx.fillRect(boss.x + 2, boss.y - 22, 100 * (boss.hp / 10), 10);
             }
 
+            // 畫玩家
             const p = player; const x = p.x; const y = p.y; const w = p.w; const h = p.h;
             ctx.fillStyle = p.color; ctx.fillRect(x, y, w, h);
             ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; ctx.strokeRect(x, y, w, h);
@@ -427,6 +451,7 @@
             requestAnimationFrame(draw);
         }
 
+        // 初始顯示
         showMessage('LEVEL 1', 'Press space to start!', 0);
         setInterval(update, 1000/60);
         draw();
