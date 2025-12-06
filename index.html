@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Final Ear & Patrol Fix</title>
+    <title>Cat Mario | Pits & Coins Update</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 (維持不變) --- */
@@ -107,6 +107,7 @@
         const JUMP_FORCE = -12;
         const DOUBLE_JUMP_FORCE = -10;
         const SPEED = 5;
+        const GROUND_Y = 350; // 定義地面高度
 
         // 玩家設定
         const player = {
@@ -121,14 +122,14 @@
             isRolling: false
         };
 
-        let platforms = []; let enemies = [];
+        let platforms = []; let enemies = []; let coins = []; // 新增金幣陣列
         let goal = null; let boss = null;
 
         // ==========================================
         // --- 繪圖函數區 ---
         // ==========================================
 
-        // 繪製橘貓球 (【修正】耳朵樣式：分開且更挺拔)
+        // 繪製橘貓球 (【修正】耳朵向內縮進臉部)
         function drawCatBall(ctx, x, y, radius, facing, sx, sy, rotation) {
             ctx.save();
             let squashOffset = radius * (1 - sy);
@@ -136,8 +137,6 @@
             ctx.rotate(rotation);
             ctx.scale(sx, sy); 
             
-            // --- 以下繪圖座標皆相對於中心點 (0,0) ---
-
             // 身體
             ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI * 2);
             ctx.fillStyle = '#FFA500'; ctx.fill();
@@ -149,19 +148,19 @@
             ctx.beginPath(); ctx.ellipse(-8, -radius+7, 3, 6, -0.3, 0, Math.PI*2); ctx.fill();
             ctx.beginPath(); ctx.ellipse(8, -radius+7, 3, 6, 0.3, 0, Math.PI*2); ctx.fill();
 
-            // 【重點修正】耳朵：根部分開，角度更挺
+            // 【重點修正】耳朵：座標整體向下移，使其看起來嵌入頭部
             ctx.fillStyle = '#FFA500';
             ctx.beginPath(); 
-            // 左耳 (根部座標往外移，頂點座標往內移，使其更挺拔)
-            ctx.moveTo(-18, -radius + 6); ctx.lineTo(-12, -radius - 8); ctx.lineTo(-6, -radius + 2);
+            // 左耳 (座標Y值增加，使其下移)
+            ctx.moveTo(-16, -radius + 8); ctx.lineTo(-12, -radius - 4); ctx.lineTo(-6, -radius + 5);
             // 右耳
-            ctx.moveTo(18, -radius + 6); ctx.lineTo(12, -radius - 8); ctx.lineTo(6, -radius + 2);
+            ctx.moveTo(16, -radius + 8); ctx.lineTo(12, -radius - 4); ctx.lineTo(6, -radius + 5);
             ctx.fill(); ctx.stroke();
             
-            // 耳內粉色 (配合新形狀調整)
+            // 耳內粉色 (配合新位置調整)
             ctx.fillStyle = '#FFC0CB'; 
-            ctx.beginPath(); ctx.moveTo(-16, -radius + 5); ctx.lineTo(-12, -radius - 4); ctx.lineTo(-8, -radius + 3); ctx.fill();
-            ctx.beginPath(); ctx.moveTo(16, -radius + 5); ctx.lineTo(12, -radius - 4); ctx.lineTo(8, -radius + 3); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(-14, -radius + 7); ctx.lineTo(-12, -radius - 1); ctx.lineTo(-8, -radius + 6); ctx.fill();
+            ctx.beginPath(); ctx.moveTo(14, -radius + 7); ctx.lineTo(12, -radius - 1); ctx.lineTo(8, -radius + 6); ctx.fill();
 
             // 臉部
             let faceX = facing * 4;
@@ -180,27 +179,39 @@
             ctx.restore();
         }
 
-        // 繪製敵人球 (保持不變)
+        // 繪製敵人球
         function drawEnemyBall(ctx, x, y, radius, facing, rotation) {
             ctx.save();
             ctx.translate(x + radius, y + radius);
             ctx.rotate(rotation);
-            
             ctx.beginPath(); ctx.arc(0, 0, radius, 0, Math.PI*2);
             ctx.fillStyle = '#666'; ctx.fill();
             ctx.lineWidth = 2; ctx.strokeStyle = '#333'; ctx.stroke();
-            
             let lookX = facing * 4;
             ctx.fillStyle = '#F00';
             ctx.beginPath(); ctx.rect(-8 + lookX, -4, 6, 6); ctx.fill();
             ctx.beginPath(); ctx.rect(2 + lookX, -4, 6, 6); ctx.fill();
             ctx.fillStyle = '#FFF';
             ctx.beginPath(); ctx.moveTo(-3+lookX, 5); ctx.lineTo(-1+lookX, 9); ctx.lineTo(1+lookX, 5); ctx.fill();
-            
             ctx.restore();
         }
 
-        // 繪製背景 (保持不變)
+        // 【新增】繪製金幣
+        function drawCoin(ctx, coin) {
+            if (coin.collected) return;
+            ctx.save();
+            ctx.translate(coin.x, coin.y);
+            // 外圈
+            ctx.beginPath(); ctx.arc(0, 0, coin.r, 0, Math.PI*2);
+            ctx.fillStyle = '#FFD700'; ctx.fill();
+            ctx.strokeStyle = '#DAA520'; ctx.lineWidth = 2; ctx.stroke();
+            // 內圈閃光
+            ctx.beginPath(); ctx.arc(0, 0, coin.r * 0.6, 0, Math.PI*2);
+            ctx.fillStyle = '#FFFACD'; ctx.fill();
+            ctx.restore();
+        }
+
+        // 【修改】繪製背景 (移除原本的實心於面繪製，改由平台繪製)
         function drawBackground() {
             ctx.save(); ctx.resetTransform(); 
             let skyGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -208,22 +219,10 @@
             ctx.fillStyle = skyGradient; ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // 像素太陽
-            ctx.fillStyle = '#FFD700'; 
-            ctx.fillRect(680, 40, 40, 40); 
-            ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; 
-            ctx.fillRect(670, 50, 60, 20); 
-            ctx.fillRect(690, 30, 20, 60);
+            ctx.fillStyle = '#FFD700'; ctx.fillRect(680, 40, 40, 40); 
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.5)'; ctx.fillRect(670, 50, 60, 20); ctx.fillRect(690, 30, 20, 60);
 
-            const groundY = 350;
-            ctx.fillStyle = '#8B4513'; ctx.fillRect(0, groundY + 5, canvas.width, 50);
-            ctx.fillStyle = '#6d340c'; 
-            for(let i=0; i<canvas.width; i+=20) {
-                 if(i%3 === 0) ctx.fillRect(i, groundY + 15, 5, 5);
-                 if(i%4 === 0) ctx.fillRect(i+10, groundY + 30, 5, 5);
-            }
-            ctx.fillStyle = '#228B22'; ctx.fillRect(0, groundY, canvas.width, 5);
-            ctx.fillStyle = '#000';
-            ctx.fillRect(0, groundY, canvas.width, 2); ctx.fillRect(0, canvas.height - 2, canvas.width, 2); 
+            // 雲朵
             ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
             ctx.fillRect(100, 80, 80, 25); ctx.fillRect(120, 60, 40, 20);
             ctx.fillRect(550, 120, 90, 25); ctx.fillRect(580, 100, 50, 20);
@@ -232,10 +231,32 @@
         }
         // ==========================================
 
-        // --- 關卡生成 ---
+        // --- 關卡生成 (【修改】產生隨機坑洞地面與金幣) ---
         function generateLevel(lvl) {
-            platforms = []; enemies = []; boss = null; goal = null;
-            platforms.push({x: -200, y: 350, w: 3000, h: 50, type: 'ground', visible: false});
+            platforms = []; enemies = []; boss = null; goal = null; coins = [];
+
+            // 1. 生成地面 (帶有坑洞)
+            let currentGroundX = -200;
+            const levelEnd = (lvl === 6) ? 1000 : 2800; // BOSS關卡較短
+            
+            while(currentGroundX < levelEnd) {
+                let blockWidth = 200 + Math.random() * 300;
+                // 確保玩家出生點附近是安全的
+                if (currentGroundX < 50 && currentGroundX + blockWidth > 50) blockWidth = Math.max(blockWidth, 300);
+
+                // 地面現在是可見的平台
+                platforms.push({x: currentGroundX, y: GROUND_Y, w: blockWidth, h: 50, type: 'ground', visible: true});
+
+                // 在地面上隨機放置金幣
+                if (Math.random() > 0.5) {
+                     coins.push({x: currentGroundX + blockWidth / 2, y: GROUND_Y - 15, r: 8, collected: false});
+                }
+
+                let gapWidth = 60 + Math.random() * 80; // 坑洞寬度
+                currentGroundX += blockWidth + gapWidth;
+            }
+
+            // 2. 生成空中平台、敵人與金幣
             if (lvl < 6) {
                 let currentX = 200;
                 for(let i=0; i<5 + lvl; i++) {
@@ -243,22 +264,39 @@
                     let height = 250 - Math.random() * 100;
                     let width = 100 + Math.random() * 100;
                     platforms.push({x: currentX, y: height, w: width, h: 20, type: 'plat', visible: true});
-                    if (lvl > 1 && Math.random() > 0.3) {
+                    
+                    // 隨機放置敵人
+                    if (Math.random() > 0.4) {
                         enemies.push({
                             x: currentX + 20, y: height - 30, r: 15, w:30, h:30,
                             vx: 2 + (lvl * 0.2), minX: currentX, maxX: currentX + width,
                             rotation: 0 
                         });
                     }
+                    // 隨機放置金幣在平台上
+                    if (Math.random() > 0.3) {
+                         coins.push({x: currentX + width / 2 + (Math.random()*20-10), y: height - 15, r: 8, collected: false});
+                    }
+
                     currentX += width + gap;
                 }
                 goal = {x: currentX, y: 300, w: 40, h: 50};
             }
+
+            // 3. BOSS 關卡設定
             if (lvl === 6) {
-                platforms.push({x: -200, y: 350, w: 1200, h: 50, type: 'ground', visible: false});
+                // 確保BOSS戰地面平坦
+                platforms = [];
+                platforms.push({x: -200, y: GROUND_Y, w: 1200, h: 50, type: 'ground', visible: true});
                 platforms.push({x: 50, y: 250, w: 100, h: 20, type: 'plat', visible: true});
                 platforms.push({x: 650, y: 250, w: 100, h: 20, type: 'plat', visible: true});
                 platforms.push({x: 350, y: 150, w: 100, h: 20, type: 'plat', visible: true});
+                
+                // 放置一些補給金幣
+                coins.push({x: 100, y: 235, r: 8, collected: false});
+                coins.push({x: 700, y: 235, r: 8, collected: false});
+                coins.push({x: 400, y: 135, r: 8, collected: false});
+
                 boss = {
                     x: 400, y: 250, r: 50, w: 100, h: 100,
                     vx: 3, vy: 0, hp: 10, active: true, minX: 0, maxX: 700,
@@ -344,7 +382,7 @@
             platforms.forEach(p => {
                 if (player.x < p.x + p.w && player.x + player.w > p.x &&
                     player.y < p.y + p.h && player.y + player.h > p.y) {
-                    if (player.vy > 0 && player.y + player.h < p.y + 20) {
+                    if (player.vy > 0 && player.y + player.h < p.y + 25) { // 稍微增加容錯
                         player.y = p.y - player.h; 
                         player.vy = 0;
                         player.grounded = true;
@@ -356,13 +394,27 @@
                 }
             });
 
-            if (player.y > canvas.height) playerDie();
+            // 【新增】掉落坑洞判定
+            if (player.y > canvas.height + 50) playerDie();
+            
             if (goal && player.x > goal.x && player.x < goal.x + goal.w && player.y > goal.y) levelComplete();
 
-            // 更新敵人 (【修正】巡邏範圍)
+            // 【新增】金幣碰撞檢測
+            coins.forEach(c => {
+                if (!c.collected) {
+                    let dx = (player.x + player.radius) - c.x;
+                    let dy = (player.y + player.radius) - c.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < player.radius + c.r) {
+                        c.collected = true;
+                        score += 100;
+                        updateUI();
+                    }
+                }
+            });
+
+            // 更新敵人
             enemies.forEach(e => {
                 e.x += e.vx; 
-                // 往左走看左邊界，往右走看右邊界(x+w)
                 if (e.vx < 0 && e.x < e.minX) { e.x = e.minX; e.vx *= -1; }
                 else if (e.vx > 0 && e.x + e.w > e.maxX) { e.x = e.maxX - e.w; e.vx *= -1; }
                 
@@ -377,7 +429,7 @@
                 }
             });
 
-            // 更新 BOSS (【修正】巡邏範圍)
+            // 更新 BOSS
             if (boss && boss.active) {
                 boss.x += boss.vx; 
                 if (boss.vx < 0 && boss.x < boss.minX) { boss.x = boss.minX; boss.vx *= -1; }
@@ -399,7 +451,7 @@
 
         function playerDie() {
             lives--; updateUI();
-            if (lives > 0) { player.x = 50; player.y = 200; player.vy = 0; player.rotation = 0; player.isRolling = false; }
+            if (lives > 0) { player.x = 50; player.y = 300; player.vy = 0; player.rotation = 0; player.isRolling = false; }
             else {
                 gameState = 'GAME_OVER';
                 let msg = 'GAME OVER\nScore: ' + score;
@@ -412,11 +464,13 @@
 
         // --- 主繪圖迴圈 ---
         function draw() {
+            // 背景現在只畫天空和太陽，地面由平台繪製
             drawBackground();
             ctx.save();
             let camX = 0; if (level !== 6) camX = Math.max(0, player.x - 200);
             ctx.translate(-camX, 0);
 
+            // 繪製平台與地面
             platforms.forEach(p => {
                 if (!p.visible) return;
                 ctx.fillStyle = '#8B4513'; ctx.fillRect(p.x, p.y + 5, p.w, p.h - 5);
@@ -424,7 +478,18 @@
                 ctx.fillStyle = '#000';
                 ctx.fillRect(p.x, p.y, p.w, 2); ctx.fillRect(p.x, p.y + p.h - 2, p.w, 2);
                 ctx.fillRect(p.x, p.y, 2, p.h); ctx.fillRect(p.x + p.w - 2, p.y, 2, p.h);
+                // 像素點綴 (只在地板類型繪製)
+                if (p.type === 'ground') {
+                    ctx.fillStyle = '#6d340c'; 
+                    for(let i=p.x; i<p.x+p.w; i+=20) {
+                        if(i%3 === 0) ctx.fillRect(i, p.y + 15, 5, 5);
+                        if(i%4 === 0) ctx.fillRect(i+10, p.y + 30, 5, 5);
+                    }
+                }
             });
+
+            // 【新增】繪製金幣
+            coins.forEach(c => drawCoin(ctx, c));
 
             if (goal) {
                 ctx.fillStyle = '#8B4513'; ctx.fillRect(goal.x, goal.y, goal.w, goal.h);
@@ -436,12 +501,12 @@
                 ctx.fillStyle = '#000'; ctx.font = '16px "Press Start 2P"'; ctx.textAlign = 'center'; ctx.fillText('GOAL', goal.x + goal.w / 2, goal.y - 10); ctx.textAlign = 'start';
             }
 
-            // 繪製敵人 (傳入旋轉角度)
+            // 繪製敵人
             enemies.forEach(e => {
                 if(e.y < 500) drawEnemyBall(ctx, e.x, e.y, e.r, e.vx > 0 ? 1 : -1, e.rotation);
             });
 
-            // 繪製 BOSS (傳入旋轉角度)
+            // 繪製 BOSS
             if (boss && boss.active) {
                 drawEnemyBall(ctx, boss.x, boss.y, boss.r, boss.vx > 0 ? 1 : -1, boss.rotation);
                 ctx.fillStyle = '#000'; ctx.fillRect(boss.x, boss.y - 20, 104, 14);
