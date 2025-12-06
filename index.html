@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cat Mario | Animated Pixel Edition</title>
+    <title>Cat Mario | Cute Orange Tabby Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
     <style>
         /* --- CSS 樣式區 (維持不變) --- */
@@ -101,94 +101,119 @@
 
         // 物理設定
         const GRAVITY = 0.5;
-        const JUMP_FORCE = -13;
+        const JUMP_FORCE = -12; // 稍微調低跳躍力配合短腿
         const SPEED = 4;
 
         // ==========================================
-        // --- 新增：像素圖案定義 (Sprite Definitions) ---
+        // --- 全新像素圖案定義 (依照參考圖重繪) ---
         // ==========================================
-        // 0=透明, 1=輪廓黑, 2=主色A, 3=主色B, 4=主色C, 5=粉紅(耳/鼻), 6=眼睛色
+        // 0=透明, 1=黑輪廓, 2=主毛色, 3=深色條紋, 4=淺色口鼻/腳, 5=粉紅鼻, 6=眼睛
         
-        // 側面貓咪模板 (18x14 grid)
+        // 新的可愛短腿貓模板 (21x17 grid)
         const SPRITES = {
             CAT: {
                 IDLE: [
-                    [0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0],
-                    [0,1,2,5,1,0,0,0,0,0,0,0,0,1,2,5,1,0],
-                    [0,1,2,2,1,1,1,1,1,1,1,1,1,1,2,2,1,0],
-                    [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0],
-                    [0,1,2,6,1,2,2,2,2,2,2,2,2,2,6,1,2,1],
-                    [0,1,2,2,2,2,2,2,5,2,2,2,2,2,2,2,1,1],
-                    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [0,1,3,3,3,4,4,2,2,2,2,2,4,4,2,3,1,0],
-                    [0,1,3,3,1,4,4,1,2,2,2,1,4,4,1,3,1,0],
-                    [0,0,1,1,0,1,1,0,1,1,1,0,1,1,0,1,1,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    [0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0],
+                    [0,0,0,0,0,1,2,3,1,0,0,0,0,0,1,3,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,3,1,1,1,1,1,1,1,3,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,2,2,3,3,3,3,3,2,2,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,2,3,3,2,3,2,3,3,2,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,6,2,2,2,2,2,2,2,6,2,1,0,0,0],
+                    [0,1,1,0,0,1,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0],
+                    [0,1,2,1,0,1,2,4,4,4,4,4,4,4,4,4,2,1,0,0,0],
+                    [0,1,2,1,0,1,2,4,6,4,4,5,4,4,6,4,2,1,0,0,0],
+                    [0,1,2,1,0,1,1,1,4,4,4,4,4,4,4,1,1,1,0,0,0],
+                    [0,1,2,1,1,2,2,2,1,1,1,1,1,1,1,2,2,1,0,0,0],
+                    [0,1,3,2,2,3,3,2,2,3,3,3,2,2,2,2,2,1,0,0,0],
+                    [0,1,3,3,3,3,3,3,3,3,3,3,3,3,3,2,2,1,0,0,0],
+                    [0,1,2,3,3,2,2,3,3,2,2,3,3,2,2,2,2,1,0,0,0],
+                    [0,0,1,1,1,2,2,2,2,2,2,2,2,2,2,2,1,1,0,0],
+                    [0,0,0,0,1,4,4,1,1,1,4,4,1,4,4,1,0,0,0,0],
+                    [0,0,0,0,0,1,1,0,0,0,1,1,0,1,1,0,0,0,0,0]
                 ],
                 WALK1: [
-                    [0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0],
-                    [0,1,2,5,1,0,0,0,0,0,0,0,0,1,2,5,1,0],
-                    [0,1,2,2,1,1,1,1,1,1,1,1,1,1,2,2,1,0],
-                    [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0],
-                    [0,1,2,6,1,2,2,2,2,2,2,2,2,2,6,1,2,1],
-                    [0,1,2,2,2,2,2,2,5,2,2,2,2,2,2,2,1,1],
-                    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [0,1,3,3,3,4,4,2,2,2,2,2,4,4,2,3,1,0],
-                    [0,1,3,3,1,4,4,1,1,1,1,1,4,4,1,1,1,0],
-                    [0,0,1,1,0,1,1,0,1,2,1,0,1,1,0,1,2,1],
-                    [0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,1,1,1]
+                    [0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0],
+                    [0,0,0,0,0,1,2,3,1,0,0,0,0,0,1,3,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,3,1,1,1,1,1,1,1,3,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,2,2,3,3,3,3,3,2,2,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,2,3,3,2,3,2,3,3,2,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,6,2,2,2,2,2,2,2,6,2,1,0,0,0],
+                    [0,1,1,0,0,1,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0],
+                    [0,1,2,1,0,1,2,4,4,4,4,4,4,4,4,4,2,1,0,0,0],
+                    [0,1,2,1,0,1,2,4,6,4,4,5,4,4,6,4,2,1,0,0,0],
+                    [0,1,2,1,0,1,1,1,4,4,4,4,4,4,4,1,1,1,0,0,0],
+                    [0,1,2,1,1,2,2,2,1,1,1,1,1,1,1,2,2,1,0,0,0],
+                    [0,1,3,2,2,3,3,2,2,3,3,3,2,2,2,2,2,1,0,0,0],
+                    [0,1,3,3,3,3,3,3,3,3,3,3,3,3,3,2,2,1,0,0,0],
+                    [0,1,2,3,3,2,2,3,3,2,2,3,3,2,2,2,2,1,0,0,0],
+                    [0,0,1,1,1,2,2,2,2,2,2,2,2,2,2,2,1,1,0,0],
+                    [0,0,0,0,1,4,4,1,1,4,4,1,1,1,1,1,0,0,0,0],
+                    [0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0,0,0]
                 ],
                 WALK2: [
-                    [0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0],
-                    [0,1,2,5,1,0,0,0,0,0,0,0,0,1,2,5,1,0],
-                    [0,1,2,2,1,1,1,1,1,1,1,1,1,1,2,2,1,0],
-                    [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0],
-                    [0,1,2,6,1,2,2,2,2,2,2,2,2,2,6,1,2,1],
-                    [0,1,2,2,2,2,2,2,5,2,2,2,2,2,2,2,1,1],
-                    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [0,1,3,3,3,4,4,1,1,1,1,1,4,4,2,3,1,0],
-                    [0,0,1,3,1,4,4,1,1,2,1,0,1,4,1,3,1,0],
-                    [0,0,0,1,0,1,1,0,1,1,1,0,0,1,0,1,1,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    [0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0],
+                    [0,0,0,0,0,1,2,3,1,0,0,0,0,0,1,3,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,3,1,1,1,1,1,1,1,3,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,2,2,3,3,3,3,3,2,2,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,2,3,3,2,3,2,3,3,2,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,6,2,2,2,2,2,2,2,6,2,1,0,0,0],
+                    [0,1,1,0,0,1,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0],
+                    [0,1,2,1,0,1,2,4,4,4,4,4,4,4,4,4,2,1,0,0,0],
+                    [0,1,2,1,0,1,2,4,6,4,4,5,4,4,6,4,2,1,0,0,0],
+                    [0,1,2,1,0,1,1,1,4,4,4,4,4,4,4,1,1,1,0,0,0],
+                    [0,1,2,1,1,2,2,2,1,1,1,1,1,1,1,2,2,1,0,0,0],
+                    [0,1,3,2,2,3,3,2,2,3,3,3,2,2,2,2,2,1,0,0,0],
+                    [0,1,3,3,3,3,3,3,3,3,3,3,3,3,3,2,2,1,0,0,0],
+                    [0,1,2,3,3,2,2,3,3,2,2,3,3,2,2,2,2,1,0,0,0],
+                    [0,0,1,1,1,2,2,2,2,2,2,2,2,2,2,2,1,1,0,0],
+                    [0,0,0,0,1,1,1,1,1,1,4,4,1,1,4,4,1,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0]
                 ],
                 JUMP: [
-                    [0,0,1,1,0,0,0,0,0,0,0,0,0,0,1,1,0,0],
-                    [0,1,2,5,1,0,0,0,0,0,0,0,0,1,2,5,1,0],
-                    [0,1,2,2,1,1,1,1,1,1,1,1,1,1,2,2,1,0],
-                    [0,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,0],
-                    [0,1,2,6,1,2,2,2,2,2,2,2,2,2,6,1,2,1],
-                    [0,1,2,2,2,2,2,2,5,2,2,2,2,2,2,2,1,1],
-                    [1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [1,3,3,3,3,4,4,2,2,2,2,2,4,4,2,3,3,1],
-                    [0,1,3,3,3,4,4,2,2,2,2,2,4,4,2,3,1,0],
-                    [0,0,1,3,3,4,4,1,1,1,1,1,4,4,3,1,0,0],
-                    [0,0,0,1,1,1,1,0,0,0,0,0,1,1,1,1,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
+                    [0,0,0,0,0,0,1,1,1,0,0,0,0,0,1,1,1,0,0,0,0],
+                    [0,0,0,0,0,1,2,3,1,0,0,0,0,0,1,3,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,3,1,1,1,1,1,1,1,3,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,2,2,3,3,3,3,3,2,2,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,2,3,3,2,3,2,3,3,2,2,1,0,0,0],
+                    [0,0,0,0,0,1,2,6,2,2,2,2,2,2,2,6,2,1,0,0,0],
+                    [0,1,1,0,0,1,2,2,2,2,2,2,2,2,2,2,2,1,0,0,0],
+                    [0,1,2,1,0,1,2,4,4,4,4,4,4,4,4,4,2,1,0,0,0],
+                    [0,1,2,1,0,1,2,4,6,4,4,5,4,4,6,4,2,1,0,0,0],
+                    [0,1,2,1,0,1,1,1,4,4,4,4,4,4,4,1,1,1,0,0,0],
+                    [0,1,2,1,1,2,2,2,1,1,1,1,1,1,1,2,2,1,0,0,0],
+                    [0,1,3,2,2,3,3,2,2,3,3,3,2,2,2,2,2,1,0,0,0],
+                    [0,1,3,3,3,3,3,3,3,3,3,3,3,3,3,2,2,1,0,0,0],
+                    [0,0,1,1,1,3,3,2,2,2,2,3,3,2,2,1,1,0,0,0],
+                    [0,0,0,0,1,1,1,4,4,1,1,4,4,1,1,1,0,0,0,0],
+                    [0,0,0,0,0,0,0,1,1,0,0,1,1,0,0,0,0,0,0,0],
+                    [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
                 ]
             }
         };
 
-        // 色板定義
+        // 色板定義 (對應新的索引)
         const PALETTES = {
-            // 三花貓 (玩家)
-            CALICO: { 1:'#000', 2:'#FFF', 3:'#e38d46', 4:'#333', 5:'#ffb6c1', 6:'#000' },
-            // 灰貓紅眼 (敵人)
-            GREY_EVIL: { 1:'#222', 2:'#777', 3:'#666', 4:'#555', 5:'#333', 6:'#f00' },
-            // 惡魔巨貓 (BOSS) - 深紫/黑配色
-            BOSS_EVIL: { 1:'#000', 2:'#330033', 3:'#4a004a', 4:'#220022', 5:'#800080', 6:'#f00' },
+            // 橘色虎斑貓 (玩家) - 依照參考圖配色
+            ORANGE_TABBY: { 
+                1:'#3a2424', // 深褐輪廓
+                2:'#e38d46', // 橘色主體
+                3:'#b86128', // 深橘條紋
+                4:'#f3d8a6', // 淺奶油色口鼻/腳
+                5:'#ffabb3', // 粉紅鼻
+                6:'#3a2424'  // 深色眼睛
+            },
+            // 灰貓紅眼 (敵人) - 使用新模板
+            GREY_EVIL: { 
+                1:'#222', 2:'#777', 3:'#555', 4:'#999', 5:'#333', 6:'#f00' 
+            },
+            // 惡魔巨貓 (BOSS) - 使用新模板
+            BOSS_EVIL: { 
+                1:'#000', 2:'#330033', 3:'#220022', 4:'#4a004a', 5:'#800080', 6:'#f00' 
+            },
              // BOSS 受傷閃爍
-            BOSS_HURT: { 1:'#f00', 2:'#ffaaaa', 3:'#ff8888', 4:'#ff5555', 5:'#ffcccc', 6:'#fff' }
+            BOSS_HURT: { 
+                1:'#f00', 2:'#ffaaaa', 3:'#ff8888', 4:'#ffcccc', 5:'#ff5555', 6:'#fff' 
+            }
         };
         // ==========================================
 
@@ -196,30 +221,30 @@
         // 玩家設定 (配合新 Sprite 調整大小和碰撞箱)
         const player = {
             x: 50, y: 300, 
-            w: 30, h: 24, // 碰撞箱大小 (約為 Sprite 視覺大小)
+            w: 32, h: 28, // 碰撞箱調整為矮胖型
             vx: 0, vy: 0,
             grounded: false, facingRight: true,
-            // 動畫相關
-            animState: 'idle', // idle, walk, jump
-            animFrame: 0,      // 0 或 1 (用於走路循環)
-            animTimer: 0       // 計時器
+            animState: 'idle', animFrame: 0, animTimer: 0
         };
 
         let platforms = []; let enemies = [];
         let goal = null; let boss = null;
 
-        // 繪圖輔助函式
+        // 繪圖輔助函式 (增加 scale 參數)
         function drawSprite(ctx, pattern, x, y, pixelSize, palette, flipX = false) {
             ctx.save();
-            if (flipX) {
-                ctx.translate(x + (pattern[0].length * pixelSize) / 2, y);
-                ctx.scale(-1, 1);
-                ctx.translate(-(x + (pattern[0].length * pixelSize) / 2), -y);
-            }
+            // 將座標系移動到 sprite 中心點進行翻轉
+            let spriteWidth = pattern[0].length * pixelSize;
+            let spriteHeight = pattern.length * pixelSize;
+            ctx.translate(x + spriteWidth / 2, y + spriteHeight / 2);
+            if (flipX) ctx.scale(-1, 1);
+            ctx.translate(-(x + spriteWidth / 2), -(y + spriteHeight / 2));
+
             pattern.forEach((row, rowIndex) => {
                 row.forEach((pixelCode, colIndex) => {
                     if (pixelCode !== 0 && palette[pixelCode]) {
                         ctx.fillStyle = palette[pixelCode];
+                        // 繪製像素並稍微調整位置以居中
                         ctx.fillRect(x + colIndex * pixelSize, y + rowIndex * pixelSize, pixelSize, pixelSize);
                     }
                 });
@@ -262,11 +287,10 @@
                     platforms.push({x: currentX, y: height, w: width, h: 20, type: 'plat', visible: true});
                     if (lvl > 1 && Math.random() > 0.3) {
                         enemies.push({
-                            // 調整敵人碰撞箱大小
-                            x: currentX + 20, y: height - 30, w: 30, h: 24, 
+                            // 調整敵人碰撞箱大小 (矮胖型)
+                            x: currentX + 20, y: height - 30, w: 32, h: 28, 
                             vx: 2 + (lvl * 0.2), patrolStart: currentX, patrolEnd: currentX + width - 30,
                             type: 'dog',
-                            // 敵人動畫
                             animState: 'walk', animFrame: 0, animTimer: 0, facingRight: true
                         });
                     }
@@ -281,8 +305,8 @@
                 platforms.push({x: 650, y: 250, w: 100, h: 20, type: 'plat', visible: true});
                 platforms.push({x: 350, y: 150, w: 100, h: 20, type: 'plat', visible: true});
                 boss = {
-                    // BOSS 碰撞箱與動畫
-                    x: 400, y: 250, w: 80, h: 60, vx: 3, vy: 0, hp: 10,
+                    // BOSS 碰撞箱
+                    x: 400, y: 250, w: 80, h: 70, vx: 3, vy: 0, hp: 10,
                     active: true, isHurt: false,
                     animState: 'walk', animFrame: 0, animTimer: 0, facingRight: true
                 };
@@ -330,38 +354,21 @@
             return r1.x < r2.x + r2.w && r1.x + r1.w > r2.x && r1.y < r2.y + r2.h && r1.y + r1.h > r2.y;
         }
 
-        // --- 更新動畫狀態的輔助函式 ---
         function updateAnimation(entity) {
-            // 1. 決定狀態
-            if (!entity.grounded && entity.vy !== 0) {
-                entity.animState = 'jump';
-            } else if (Math.abs(entity.vx) > 0.1) {
-                entity.animState = 'walk';
-            } else {
-                entity.animState = 'idle';
-            }
+            if (!entity.grounded && entity.vy !== 0) entity.animState = 'jump';
+            else if (Math.abs(entity.vx) > 0.1) entity.animState = 'walk';
+            else entity.animState = 'idle';
 
-            // 2. 更新走路循環
             if (entity.animState === 'walk') {
                 entity.animTimer++;
-                if (entity.animTimer > 8) { // 每 8 幀切換一次
-                    entity.animFrame = (entity.animFrame + 1) % 2;
-                    entity.animTimer = 0;
-                }
-            } else {
-                entity.animFrame = 0; entity.animTimer = 0;
-            }
-
-            // 3. 決定面向
+                if (entity.animTimer > 8) { entity.animFrame = (entity.animFrame + 1) % 2; entity.animTimer = 0; }
+            } else { entity.animFrame = 0; entity.animTimer = 0; }
             if (entity.vx > 0) entity.facingRight = true;
             if (entity.vx < 0) entity.facingRight = false;
         }
 
-
         function update() {
             if (gameState !== 'PLAYING') return;
-
-            // 玩家移動
             if (keys['ArrowLeft'] || keys['KeyA']) player.vx = -SPEED;
             else if (keys['ArrowRight'] || keys['KeyD']) player.vx = SPEED;
             else player.vx = 0;
@@ -371,7 +378,6 @@
             player.y += player.vy; player.grounded = false;
             platforms.forEach(p => { if (checkRectCollision(player, p)) { if (player.vy > 0) { player.y = p.y - player.h; player.grounded = true; player.vy = 0; } else if (player.vy < 0) { player.y = p.y + p.h; player.vy = 0; } } });
 
-            // 更新玩家動畫
             updateAnimation(player);
 
             if (player.y > canvas.height) playerDie();
@@ -380,10 +386,7 @@
             enemies.forEach(enemy => {
                 enemy.x += enemy.vx;
                 if (enemy.x > enemy.patrolEnd || enemy.x < enemy.patrolStart) enemy.vx *= -1;
-                // 敵人假裝有重力，確保貼地
-                enemy.grounded = true; 
-                updateAnimation(enemy);
-
+                enemy.grounded = true; updateAnimation(enemy);
                 if (checkRectCollision(player, enemy)) {
                     if (player.vy > 0 && player.y + player.h - 10 < enemy.y + enemy.h/2) {
                         enemy.y = 1000; player.vy = -5; score += 100; updateUI();
@@ -394,9 +397,7 @@
             if (boss && boss.active) {
                 boss.x += boss.vx;
                 if (boss.x < 0 || boss.x > 700) boss.vx *= -1;
-                boss.grounded = true; // Boss 貼地
-                updateAnimation(boss);
-
+                boss.grounded = true; updateAnimation(boss);
                 if (checkRectCollision(player, boss)) {
                     if (player.vy > 0 && player.y + player.h - 15 < boss.y + boss.h/2) {
                         boss.hp--; player.vy = -8; boss.isHurt = true;
@@ -449,14 +450,16 @@
             }
 
             // --- 繪製角色 (使用新的 Sprite 系統) ---
-            
+            // 像素大小設定為 2 倍，保持可愛感
+            const PIXEL_SCALE = 2;
+
             // 1. 畫敵人
             enemies.forEach(e => {
                 if(e.y < 500) {
                     // ctx.strokeStyle = 'red'; ctx.strokeRect(e.x, e.y, e.w, e.h); // Debug 碰撞箱
                     let sprite = e.animState === 'walk' ? (e.animFrame===0 ? SPRITES.CAT.WALK1 : SPRITES.CAT.WALK2) : SPRITES.CAT.IDLE;
-                    // 敵人像素放大 2 倍，位置稍微調整以對齊碰撞箱
-                    drawSprite(ctx, sprite, e.x - 3, e.y - 4, 2, PALETTES.GREY_EVIL, !e.facingRight);
+                    // 稍微調整繪製位置以對齊碰撞箱中心
+                    drawSprite(ctx, sprite, e.x - 5, e.y - 4, PIXEL_SCALE, PALETTES.GREY_EVIL, !e.facingRight);
                 }
             });
 
@@ -469,10 +472,9 @@
                 else if(boss.animState === 'walk') sprite = (boss.animFrame===0 ? SPRITES.CAT.WALK1 : SPRITES.CAT.WALK2);
                 else sprite = SPRITES.CAT.IDLE;
                 
-                // BOSS 像素放大 5 倍，看起來更巨大恐怖
-                drawSprite(ctx, sprite, boss.x - 5, boss.y - 15, 5, palette, !boss.facingRight);
+                // BOSS 像素放大 4 倍
+                drawSprite(ctx, sprite, boss.x - 4, boss.y - 8, 4, palette, !boss.facingRight);
 
-                // BOSS 血條
                 ctx.fillStyle = '#000'; ctx.fillRect(boss.x, boss.y - 24, 104, 14);
                 ctx.fillStyle = 'red'; ctx.fillRect(boss.x + 2, boss.y - 22, 100, 10);
                 ctx.fillStyle = '#228B22'; ctx.fillRect(boss.x + 2, boss.y - 22, 100 * (boss.hp / 10), 10);
@@ -486,8 +488,8 @@
             else if(p.animState === 'walk') sprite = (p.animFrame===0 ? SPRITES.CAT.WALK1 : SPRITES.CAT.WALK2);
             else sprite = SPRITES.CAT.IDLE;
 
-            // 玩家像素放大 2 倍
-            drawSprite(ctx, sprite, p.x - 3, p.y - 4, 2, PALETTES.CALICO, !p.facingRight);
+            // 稍微調整繪製位置以對齊碰撞箱中心
+            drawSprite(ctx, sprite, p.x - 5, p.y - 4, PIXEL_SCALE, PALETTES.ORANGE_TABBY, !p.facingRight);
 
             ctx.restore(); 
             requestAnimationFrame(draw);
